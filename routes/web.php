@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrearUsuario;
+use App\Http\Controllers\RegisterController;
 
 // Ruta raíz redirige al login
 Route::get('/', function () {
@@ -20,5 +21,5 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Rutas Crear usuarios
-Route::get('/register', [CrearUsuario::class, 'showRegistrationForm'])->name('register');
-Route::post('/register', [CrearUsuario::class, 'register']);
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register']);

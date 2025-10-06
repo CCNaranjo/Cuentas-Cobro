@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
-class CrearUsuario extends Controller
+class RegisterController extends Controller
 {
     public function showRegistrationForm()
     {
-        return view('register.registro');
+        return view('register.register');
     }
 
     public function register(Request $request)

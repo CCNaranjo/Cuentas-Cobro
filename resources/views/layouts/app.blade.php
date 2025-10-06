@@ -4,65 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'CuentasCobro')</title>
+    <title>@yield('title', 'ARCA-D')</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#004AAD',
+                        'primary-dark': '#003580',
+                        'accent': '#00BCD4',
+                        'warning': '#FD7E14',
+                        'danger': '#DC3545',
+                        'secondary': '#6C757D',
+                        'bg-main': '#F8F9FA',
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        .login-container {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* Animaciones personalizadas */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .login-card {
+        .animate-fadeIn {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        /* Efecto glassmorphism para cards */
+        .glass-effect {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .navbar-brand {
-            font-weight: bold;
-            color: #2c3e50 !important;
-        }
-        
-        .sidebar {
-            background: #2c3e50;
-            min-height: calc(100vh - 56px);
-        }
-        
-        .sidebar .nav-link {
-            color: #ecf0f1;
-            padding: 12px 20px;
-            border-radius: 5px;
-            margin: 2px 0;
-        }
-        
-        .sidebar .nav-link:hover {
-            background: #34495e;
-            color: #fff;
-        }
-        
-        .sidebar .nav-link.active {
-            background: #3498db;
-            color: #fff;
-        }
-        
-        .main-content {
-            background: #f8f9fa;
-            min-height: calc(100vh - 56px);
+        /* Input focus effect */
+        .input-focus:focus {
+            border-color: #00BCD4;
+            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
         }
     </style>
     
     @stack('styles')
 </head>
-<body>
+<body class="antialiased">
     @yield('content')
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     @stack('scripts')
 </body>
