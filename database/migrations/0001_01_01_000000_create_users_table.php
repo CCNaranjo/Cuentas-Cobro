@@ -11,12 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('usuarios', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('nombre');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('telefono')->nullable();
+            $table->string('documento_identidad')->unique()->nullable();
+            $table->enum('tipo_vinculacion', [
+                'global_admin', 
+                'organizacion', 
+                'contratista', 
+                'sin_vinculacion'
+            ])->default('sin_vinculacion');
+            $table->enum('estado', [
+                'activo', 
+                'inactivo', 
+                'pendiente_verificacion'
+            ])->default('pendiente_verificacion');
+            $table->timestamp('email_verificado_en')->nullable();
+            $table->timestamp('ultimo_acceso')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

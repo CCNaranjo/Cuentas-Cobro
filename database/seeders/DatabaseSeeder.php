@@ -13,11 +13,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        //LLamar seeders
+        $this->call([
+            RolesSeeder::class,
+            ModulosSeeder::class,
+            PermisosSeeder::class,
+            AdminGlobalSeeder::class
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
         ]);
     }
 }
