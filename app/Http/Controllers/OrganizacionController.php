@@ -7,6 +7,7 @@ use App\Models\Organizacion;
 use App\Models\Rol;
 use App\Models\Usuario;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class OrganizacionController extends Controller
 {
@@ -49,8 +50,7 @@ class OrganizacionController extends Controller
         ]);
 
         // Generar código de vinculación único
-        $validated['codigo_vinculacion'] = $this->generarCodigoVinculacion();
-        $validated['admin_global_id'] = auth()->id();
+        $validated['admin_global_id'] = Auth::user()->id;
         $validated['estado'] = 'activa';
 
         $organizacion = Organizacion::create($validated);
@@ -147,7 +147,7 @@ class OrganizacionController extends Controller
                 'rol_id' => $rolAdmin->id,
                 'estado' => 'activo',
                 'fecha_asignacion' => now(),
-                'asignado_por' => auth()->id(),
+                'asignado_por' => Auth::id(),
             ]
         ]);
 

@@ -26,8 +26,9 @@
             <!-- Header con logo -->
             <div class="text-center mb-8">
                 <div class="flex justify-center mb-4">
-                    <div class="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-                        <x-logo primary-color="#1B3A6B" secondary-color="#00E5CC" ></x-logo>
+                    <div class="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+                        <span class="text-white text-3xl font-bold">A</span>
+                        <span class="text-white text-3xl font-bold">D</span>
                     </div>
                 </div>
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">Crear cuenta</h1>
@@ -57,22 +58,22 @@
                 
                 <!-- Nombre -->
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-user text-primary mr-2"></i>Nombre completo
                         <span class="text-danger">*</span>
                     </label>
                     <input 
                         type="text" 
-                        id="name" 
-                        name="name" 
-                        value="{{ old('name') }}" 
+                        id="nombre" 
+                        name="nombre" 
+                        value="{{ old('nombre') }}" 
                         required 
                         autocomplete="name" 
                         autofocus
                         placeholder="Ej: Juan Pérez"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus transition-all duration-200 @error('name') border-danger @enderror"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus transition-all duration-200 @error('nombre') border-danger @enderror"
                     >
-                    @error('name')
+                    @error('nombre')
                         <p class="mt-2 text-sm text-danger flex items-center">
                             <i class="fas fa-info-circle mr-1"></i>{{ $message }}
                         </p>
@@ -102,7 +103,71 @@
                     @enderror
                     <p class="mt-1 text-xs text-secondary">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Usa un correo válido para recuperar tu cuenta
+                        Si tu email pertenece a una organización, se detectará automáticamente
+                    </p>
+                </div>
+
+                <!-- Documento de Identidad (Opcional) -->
+                <div>
+                    <label for="documento_identidad" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-id-card text-primary mr-2"></i>Documento de Identidad
+                    </label>
+                    <input 
+                        type="text" 
+                        id="documento_identidad" 
+                        name="documento_identidad" 
+                        value="{{ old('documento_identidad') }}" 
+                        placeholder="1234567890"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus transition-all duration-200 @error('documento_identidad') border-danger @enderror"
+                    >
+                    @error('documento_identidad')
+                        <p class="mt-2 text-sm text-danger flex items-center">
+                            <i class="fas fa-info-circle mr-1"></i>{{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <!-- Teléfono (Opcional) -->
+                <div>
+                    <label for="telefono" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-phone text-primary mr-2"></i>Teléfono
+                    </label>
+                    <input 
+                        type="tel" 
+                        id="telefono" 
+                        name="telefono" 
+                        value="{{ old('telefono') }}" 
+                        placeholder="+57 300 123 4567"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus transition-all duration-200 @error('telefono') border-danger @enderror"
+                    >
+                    @error('telefono')
+                        <p class="mt-2 text-sm text-danger flex items-center">
+                            <i class="fas fa-info-circle mr-1"></i>{{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <!-- Código de Vinculación (Opcional) -->
+                <div>
+                    <label for="codigo_vinculacion" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-key text-primary mr-2"></i>Código de Vinculación
+                    </label>
+                    <input 
+                        type="text" 
+                        id="codigo_vinculacion" 
+                        name="codigo_vinculacion" 
+                        value="{{ old('codigo_vinculacion') }}" 
+                        placeholder="ORG-2025-XXXXXX"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus transition-all duration-200 @error('codigo_vinculacion') border-danger @enderror"
+                    >
+                    @error('codigo_vinculacion')
+                        <p class="mt-2 text-sm text-danger flex items-center">
+                            <i class="fas fa-info-circle mr-1"></i>{{ $message }}
+                        </p>
+                    @enderror
+                    <p class="mt-1 text-xs text-secondary">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Si tienes un código de vinculación, ingrésalo aquí
                     </p>
                 </div>
 
@@ -178,24 +243,6 @@
                             <i class="fas fa-info-circle mr-1"></i>{{ $message }}
                         </p>
                     @enderror
-                </div>
-
-                <!-- Términos y condiciones -->
-                <div class="flex items-start">
-                    <input 
-                        type="checkbox" 
-                        id="terms" 
-                        name="terms"
-                        required
-                        class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-accent focus:ring-2 cursor-pointer mt-1"
-                    >
-                    <label for="terms" class="ml-2 text-sm text-gray-700 cursor-pointer">
-                        Acepto los 
-                        <a href="#" class="text-primary hover:text-accent font-medium">términos y condiciones</a>
-                        y la 
-                        <a href="#" class="text-primary hover:text-accent font-medium">política de privacidad</a>
-                        <span class="text-danger">*</span>
-                    </label>
                 </div>
 
                 <!-- Botón de registro -->

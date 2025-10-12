@@ -15,10 +15,11 @@ class DatabaseSeeder extends Seeder
     {
         //LLamar seeders
         $this->call([
-            RolesSeeder::class,
             ModulosSeeder::class,
             PermisosSeeder::class,
-            AdminGlobalSeeder::class
+            RolesSeeder::class,
+            AdminGlobalSeeder::class,
+            AlcaldiaEjemploSeeder::class,
 
         ]);
     }

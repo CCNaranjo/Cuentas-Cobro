@@ -110,6 +110,94 @@
         .badge-danger {
             @apply bg-danger text-white text-xs font-semibold px-2 py-1 rounded-full;
         }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #004AAD;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast notifications */
+        .toast-success {
+            @apply fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slideIn;
+        }
+
+        .toast-error {
+            @apply fixed bottom-4 right-4 bg-danger text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slideIn;
+        }
+
+        .toast-warning {
+            @apply fixed bottom-4 right-4 bg-warning text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slideIn;
+        }
+
+        /* Table styles */
+        .table-header {
+            @apply bg-gray-50 border-b border-gray-200;
+        }
+
+        .table-row:hover {
+            @apply bg-gray-50;
+        }
+
+        /* Modal backdrop */
+        .modal-backdrop {
+            @apply fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center;
+        }
+
+        .modal-content {
+            @apply bg-white rounded-xl shadow-lg max-w-md w-full mx-4;
+        }
+
+        /* Progress bars */
+        .progress-bar {
+            @apply h-2 bg-gray-200 rounded-full overflow-hidden;
+        }
+
+        .progress-bar-fill {
+            @apply h-full bg-primary transition-all duration-500;
+        }
+
+        /* Status indicators */
+        .status-active {
+            @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        .status-pending {
+            @apply bg-warning/10 text-warning px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        .status-inactive {
+            @apply bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        /* Gradient backgrounds */
+        .gradient-primary {
+            @apply bg-gradient-to-r from-primary to-primary-dark;
+        }
+
+        .gradient-accent {
+            @apply bg-gradient-to-r from-accent to-cyan-500;
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            .print-break {
+                page-break-after: always;
+            }
+        }
     </style>
     
     @stack('styles')

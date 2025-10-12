@@ -37,10 +37,6 @@
                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                                         <i class="fas fa-check-circle mr-1"></i> Activa
                                     </span>
-                                @else
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
-                                        <i class="fas fa-times-circle mr-1"></i> Inactiva
-                                    </span>
                                 @endif
                             </div>
                         </div>
@@ -191,35 +187,65 @@
                         </div>
 
                         <!-- Usuarios Tab -->
-                        <div x-show="activeTab === 'usuarios'" class="space-y-6">
-                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Usuarios</h2>
+                        <div x-show="activeTab === 'usuarios'">
                             <div class="overflow-x-auto">
-                                <table class="min-w-full bg-white rounded-xl shadow-sm">
-                                    <thead>
+                                <table class="w-full">
+                                    <thead class="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Nombre</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Email</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Rol</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Estado</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Usuario</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Rol</th>
+                                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-700">Estado</th>
+                                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-700">Fecha Asignación</th>
+                                            <th class="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody class="divide-y divide-gray-200">
                                         @forelse($organizacion->usuarios as $usuario)
-                                        <tr>
-                                            <td class="px-4 py-2">{{ $usuario->name }}</td>
-                                            <td class="px-4 py-2">{{ $usuario->email }}</td>
-                                            <td class="px-4 py-2">{{ $usuario->rol }}</td>
-                                            <td class="px-4 py-2">
-                                                @if($usuario->activo)
-                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Activo</span>
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center">
+                                                    <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold mr-3">
+                                                        {{ substr($usuario->nombre, 0, 1) }}
+                                                    </div>
+                                                    <span class="font-medium text-gray-800">{{ $usuario->nombre }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4 text-sm text-secondary">{{ $usuario->email }}</td>
+                                            <td class="py-3 px-4">
+                                                @foreach($usuario->roles as $rol)
+                                                    @if($rol->pivot->organizacion_id == $organizacion->id)
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
+                                                            {{ $rol->nombre }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
+                                                @if($usuario->pivot->estado == 'activo')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                                        Activo
+                                                    </span>
                                                 @else
-                                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Inactivo</span>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                                                        Inactivo
+                                                    </span>
                                                 @endif
+                                            </td>
+                                            <td class="py-3 px-4 text-center text-sm text-secondary">
+                                                {{ $usuario->pivot->fecha_asignacion ? $usuario->pivot->fecha_asignacion->format('d/m/Y') : '-' }}
+                                            </td>
+                                            <td class="py-3 px-4 text-right">
+                                                <button class="text-primary hover:text-primary-dark p-1">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                         @empty
                                         <tr>
-                                            <td colspan="4" class="px-4 py-2 text-center text-secondary">No hay usuarios registrados.</td>
+                                            <td colspan="6" class="py-8 text-center text-secondary">
+                                                No hay usuarios asignados a esta organización
+                                            </td>
                                         </tr>
                                         @endforelse
                                     </tbody>
@@ -228,35 +254,65 @@
                         </div>
 
                         <!-- Contratos Tab -->
-                        <div x-show="activeTab === 'contratos'" class="space-y-6">
-                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Contratos</h2>
+                        <div x-show="activeTab === 'contratos'">
                             <div class="overflow-x-auto">
-                                <table class="min-w-full bg-white rounded-xl shadow-sm">
-                                    <thead>
+                                <table class="w-full">
+                                    <thead class="bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Número</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Objeto</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Valor</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Estado</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Número</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Contratista</th>
+                                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Supervisor</th>
+                                            <th class="text-right py-3 px-4 text-sm font-semibold text-gray-700">Valor Total</th>
+                                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-700">Estado</th>
+                                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-700">Vigencia</th>
+                                            <th class="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody class="divide-y divide-gray-200">
                                         @forelse($organizacion->contratos as $contrato)
-                                        <tr>
-                                            <td class="px-4 py-2">{{ $contrato->numero }}</td>
-                                            <td class="px-4 py-2">{{ $contrato->objeto }}</td>
-                                            <td class="px-4 py-2">${{ number_format($contrato->valor, 0) }}</td>
-                                            <td class="px-4 py-2">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="py-3 px-4">
+                                                <span class="font-mono text-sm font-semibold text-gray-800">{{ $contrato->numero_contrato }}</span>
+                                            </td>
+                                            <td class="py-3 px-4 text-sm">
+                                                {{ $contrato->contratista ? $contrato->contratista->nombre : 'Sin asignar' }}
+                                            </td>
+                                            <td class="py-3 px-4 text-sm">
+                                                {{ $contrato->supervisor ? $contrato->supervisor->nombre : 'Sin asignar' }}
+                                            </td>
+                                            <td class="py-3 px-4 text-right font-semibold text-gray-800">
+                                                ${{ number_format($contrato->valor_total, 0) }}
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
                                                 @if($contrato->estado == 'activo')
-                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Activo</span>
-                                                @else
-                                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Inactivo</span>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                                        Activo
+                                                    </span>
+                                                @elseif($contrato->estado == 'borrador')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                                                        Borrador
+                                                    </span>
+                                                @elseif($contrato->estado == 'terminado')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                                        Terminado
+                                                    </span>
                                                 @endif
+                                            </td>
+                                            <td class="py-3 px-4 text-center text-sm text-secondary">
+                                                {{ $contrato->fecha_inicio->format('d/m/Y') }} - {{ $contrato->fecha_fin->format('d/m/Y') }}
+                                            </td>
+                                            <td class="py-3 px-4 text-right">
+                                                <a href="{{ route('contratos.show', $contrato) }}" 
+                                                   class="text-accent hover:text-primary p-1">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                         @empty
                                         <tr>
-                                            <td colspan="4" class="px-4 py-2 text-center text-secondary">No hay contratos registrados.</td>
+                                            <td colspan="7" class="py-8 text-center text-secondary">
+                                                No hay contratos registrados
+                                            </td>
                                         </tr>
                                         @endforelse
                                     </tbody>
@@ -265,37 +321,53 @@
                         </div>
 
                         <!-- Pendientes Tab -->
-                        <div x-show="activeTab === 'pendientes'" class="space-y-6">
-                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Vinculaciones Pendientes</h2>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full bg-white rounded-xl shadow-sm">
-                                    <thead>
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Nombre</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Email</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Fecha Solicitud</th>
-                                            <th class="px-4 py-2 text-left text-xs font-semibold text-secondary">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($organizacion->vinculacionesPendientes as $pendiente)
-                                        <tr>
-                                            <td class="px-4 py-2">{{ $pendiente->nombre }}</td>
-                                            <td class="px-4 py-2">{{ $pendiente->email }}</td>
-                                            <td class="px-4 py-2">{{ $pendiente->created_at->format('d/m/Y') }}</td>
-                                            <td class="px-4 py-2">
-                                                <a href="{{ route('vinculaciones.aprobar', $pendiente->id) }}" class="text-green-600 hover:underline mr-2">Aprobar</a>
-                                                <a href="{{ route('vinculaciones.rechazar', $pendiente->id) }}" class="text-red-600 hover:underline">Rechazar</a>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-2 text-center text-secondary">No hay vinculaciones pendientes.</td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div x-show="activeTab === 'pendientes'">
+                            @if($organizacion->vinculacionesPendientes->count() > 0)
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    @foreach($organizacion->vinculacionesPendientes as $pendiente)
+                                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <div class="flex items-start justify-between mb-3">
+                                            <div class="flex items-center">
+                                                <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center text-warning font-bold mr-3">
+                                                    {{ substr($pendiente->usuario->nombre, 0, 1) }}
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-semibold text-gray-800">{{ $pendiente->usuario->nombre }}</h4>
+                                                    <p class="text-sm text-secondary">{{ $pendiente->usuario->email }}</p>
+                                                </div>
+                                            </div>
+                                            <span class="text-xs text-secondary">
+                                                {{ $pendiente->created_at->diffForHumans() }}
+                                            </span>
+                                        </div>
+                                        
+                                        @if($pendiente->codigo_vinculacion_usado)
+                                        <p class="text-xs text-secondary mb-3">
+                                            <i class="fas fa-key mr-1"></i>
+                                            Código usado: <code class="bg-white px-2 py-0.5 rounded">{{ $pendiente->codigo_vinculacion_usado }}</code>
+                                        </p>
+                                        @endif
+
+                                        <div class="flex space-x-2">
+                                            <a href="{{ route('usuarios.pendientes', ['organizacion_id' => $organizacion->id]) }}" 
+                                               class="flex-1 bg-primary text-white text-center py-2 rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium">
+                                                <i class="fas fa-user-check mr-1"></i>
+                                                Asignar Rol
+                                            </a>
+                                            <button class="px-4 py-2 border border-danger text-danger rounded-lg hover:bg-red-50 transition-colors">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-12">
+                                    <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
+                                    <p class="text-secondary font-medium">No hay vinculaciones pendientes</p>
+                                    <p class="text-sm text-gray-400 mt-2">Todas las solicitudes han sido procesadas</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -304,10 +376,21 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script>
-function copiarCodigo(codigo) {
-    navigator.clipboard.writeText(codigo);
-    alert('Código copiado al portapapeles');
-}
+    function copiarCodigo(codigo) {
+        navigator.clipboard.writeText(codigo).then(() => {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slideIn';
+            toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Código copiado al portapapeles';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        });
+    }
 </script>
+@endpush
 @endsection
