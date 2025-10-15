@@ -24,6 +24,30 @@
                     </a>
                 </div>
 
+                <!-- Alerta de Organización Actual -->
+                @if(session('organizacion_actual'))
+                    @php
+                        $orgActual = \App\Models\Organizacion::find(session('organizacion_actual'));
+                    @endphp
+                    @if($orgActual)
+                    <div class="flex items-center p-4 mb-6 bg-blue-50 border-l-4 border-blue-400 rounded-lg rounded-l-none shadow-sm">
+                        <i class="bi bi-info-circle text-2xl text-blue-500 mr-3"></i>
+                        <div class="flex-grow">
+                            <strong class="text-blue-900">Trabajando con:</strong> 
+                            <span class="text-blue-700">{{ $orgActual->nombre_oficial }}</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="{{ route('usuarios.index') }}" class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm">
+                                <i class="bi bi-people mr-1.5"></i>Usuarios
+                            </a>
+                            <a href="{{ route('contratos.index') }}" class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm">
+                                <i class="bi bi-file-earmark-text mr-1.5"></i>Contratos
+                            </a>
+                        </div>
+                    </div>
+                    @endif
+                @endif
+
                 <!-- Filtros -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
                     <form method="GET" class="flex flex-wrap gap-4">
@@ -58,19 +82,31 @@
                                 <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Usuarios</th>
                                 <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Contratos</th>
                                 <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Estado</th>
+                                <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Seleccionar</th>
                                 <th class="text-right py-4 px-6 text-sm font-semibold text-gray-700">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             @forelse($organizaciones as $org)
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            @php
+                                $organizacionActual = session('organizacion_actual');
+                                $esOrganizacionActual = $organizacionActual == $org->id;
+                            @endphp
+                            <tr class="hover:bg-gray-50 transition-colors {{ $esOrganizacionActual ? 'bg-primary/5 border-l-4 border-primary' : '' }}">
                                 <td class="py-4 px-6">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3">
                                             <i class="fas fa-building text-primary"></i>
                                         </div>
                                         <div>
-                                            <p class="font-semibold text-gray-800">{{ $org->nombre_oficial }}</p>
+                                            <p class="font-semibold text-gray-800 flex items-center">
+                                                {{ $org->nombre_oficial }}
+                                                @if($esOrganizacionActual)
+                                                <span class="ml-2 bg-primary text-white text-xs px-2 py-1 rounded-full flex items-center">
+                                                    <i class="fas fa-check mr-1"></i> Actual
+                                                </span>
+                                                @endif
+                                            </p>
                                             <p class="text-sm text-secondary">{{ $org->email_institucional }}</p>
                                         </div>
                                     </div>
@@ -88,9 +124,9 @@
                                     <div class="flex items-center space-x-2">
                                         <code class="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{{ $org->codigo_vinculacion }}</code>
                                         <button onclick="copiarCodigo('{{ $org->codigo_vinculacion }}')" 
-                                                class="text-accent hover:text-primary transition-colors"
+                                                class="text-accent hover:text-primary transition-colors p-1"
                                                 title="Copiar código">
-                                            <i class="fas fa-copy"></i>
+                                            <i class="fas fa-copy text-sm"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -119,16 +155,34 @@
                                         </span>
                                     @endif
                                 </td>
+                                <td class="py-4 px-6 text-center">
+                                    @if(!$esOrganizacionActual)
+                                    <form action="{{ route('organizaciones.seleccionar', $org) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" 
+                                                class="bg-gradient-to-r from-accent to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all flex items-center text-sm"
+                                                title="Seleccionar esta organización">
+                                            <i class="fas fa-check-circle mr-2"></i>
+                                            Seleccionar
+                                        </button>
+                                    </form>
+                                    @else
+                                    <span class="text-sm text-primary font-semibold flex items-center justify-center">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Seleccionada
+                                    </span>
+                                    @endif
+                                </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end space-x-2">
                                         <a href="{{ route('organizaciones.show', $org) }}" 
-                                           class="text-accent hover:text-primary transition-colors p-2"
-                                           title="Ver detalles">
+                                        class="text-accent hover:text-primary transition-colors p-2"
+                                        title="Ver detalles">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <a href="{{ route('organizaciones.edit', $org) }}" 
-                                           class="text-primary hover:text-primary-dark transition-colors p-2"
-                                           title="Editar">
+                                        class="text-primary hover:text-primary-dark transition-colors p-2"
+                                        title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     </div>
@@ -136,7 +190,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="py-12 text-center">
+                                <td colspan="9" class="py-12 text-center">
                                     <i class="fas fa-building text-6xl text-gray-300 mb-4"></i>
                                     <p class="text-secondary font-medium">No hay organizaciones registradas</p>
                                     <p class="text-sm text-gray-400 mt-2">Crea tu primera organización</p>

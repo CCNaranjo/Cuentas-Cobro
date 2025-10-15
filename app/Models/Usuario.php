@@ -111,13 +111,24 @@ class Usuario extends Authenticatable
 
     public function tienePermiso($slugPermiso, $organizacionId = null)
     {
+        // Si es admin_global, tiene todos los permisos
+        if ($this->esAdminGlobal()) {
+            return true;
+        }
+
+        $organizacionId = $organizacionId ?? session('organizacion_actual');
+
         return $this->roles()
+                    /*
                     ->when($organizacionId, function($query) use ($organizacionId) {
                         $query->wherePivot('organizacion_id', $organizacionId);
                     })
+                    */
                     ->whereHas('permisos', function($query) use ($slugPermiso) {
                         $query->where('slug', $slugPermiso);
                     })
+                    ->wherePivot('organizacion_id', $organizacionId) // CORRECCIÓN: usar wherePivot
+                    ->wherePivot('estado', 'activo')
                     ->exists();
     }
 

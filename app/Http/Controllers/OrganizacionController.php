@@ -14,6 +14,9 @@ class OrganizacionController extends Controller
     /**
      * Mostrar lista de organizaciones (Admin Global)
      */
+
+    
+
     public function index()
     {
         $organizaciones = Organizacion::with(['adminGlobal', 'usuarios'])
@@ -50,6 +53,7 @@ class OrganizacionController extends Controller
         ]);
 
         // Generar código de vinculación único
+        $validated['codigo_vinculacion'] = $this->generarCodigoVinculacion();
         $validated['admin_global_id'] = Auth::user()->id;
         $validated['estado'] = 'activa';
 
@@ -67,9 +71,16 @@ class OrganizacionController extends Controller
      */
     public function show(Organizacion $organizacion)
     {
+        /** @var \App\Models\Usuario $user */ 
+        $user = Auth::user();
+        // Establecer esta organización como actual en sesión (para Admin Global)
+        if ($user->esAdminGlobal()) {
+            session(['organizacion_actual' => $organizacion->id]);
+        }
+        
         $organizacion->load([
             'usuarios' => function($query) {
-                $query->withPivot('rol_id', 'estado')->with('roles');
+                $query->withPivot('rol_id', 'estado', 'fecha_asignacion')->with('roles');
             },
             'contratos' => function($query) {
                 $query->with(['contratista', 'supervisor'])->latest()->take(10);
@@ -119,6 +130,25 @@ class OrganizacionController extends Controller
 
         return redirect()->route('organizaciones.show', $organizacion)
             ->with('success', 'Organización actualizada exitosamente');
+    }
+
+    /**
+     * Seleccionar organización para trabajar (Admin Global)
+     */
+    public function seleccionar(Request $request, Organizacion $organizacion)
+    {
+        /** @var \App\Models\Usuario $user */ 
+        $user = Auth::user();
+        
+        // Solo Admin Global puede seleccionar organizaciones
+        if (!$user->esAdminGlobal()) {
+            abort(403, 'No tienes permiso para realizar esta acción');
+        }
+
+        session(['organizacion_actual' => $organizacion->id]);
+
+        return redirect()->route('organizaciones.index')
+            ->with('success', 'Ahora estás trabajando con: ' . $organizacion->nombre_oficial);
     }
 
     /**

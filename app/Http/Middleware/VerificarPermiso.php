@@ -33,6 +33,10 @@ class VerificarPermiso
                 ->withErrors(['error' => 'No se ha seleccionado una organización']);
         }
 
+        if (!$usuario->tienePermiso($permiso)) {
+            abort(403, 'No tienes permiso para realizar esta acción');
+        }
+
         // Verificar si tiene el permiso en la organización
         if ($usuario->tienePermiso($permiso, $organizacionId)) {
             return $next($request);
