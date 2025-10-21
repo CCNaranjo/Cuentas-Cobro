@@ -40,10 +40,18 @@ class ModulosSeeder extends Seeder
                 'parent_id' => null
             ],
             [
+                'nombre' => 'Roles',
+                'slug' => 'roles',
+                'icono' => 'fa-user-shield',
+                'orden' => 4,
+                'activo' => true,
+                'parent_id' => null
+            ],
+            [
                 'nombre' => 'Contratos',
                 'slug' => 'contratos',
                 'icono' => 'fa-file-contract',
-                'orden' => 4,
+                'orden' => 5,
                 'activo' => true,
                 'parent_id' => null
             ],
@@ -51,7 +59,7 @@ class ModulosSeeder extends Seeder
                 'nombre' => 'Cuentas de Cobro',
                 'slug' => 'cuentas-cobro',
                 'icono' => 'fa-file-invoice-dollar',
-                'orden' => 5,
+                'orden' => 6,
                 'activo' => true,
                 'parent_id' => null
             ],
@@ -59,7 +67,7 @@ class ModulosSeeder extends Seeder
                 'nombre' => 'Reportes',
                 'slug' => 'reportes',
                 'icono' => 'fa-chart-bar',
-                'orden' => 6,
+                'orden' => 7,
                 'activo' => true,
                 'parent_id' => null
             ],
@@ -67,7 +75,7 @@ class ModulosSeeder extends Seeder
                 'nombre' => 'Configuración',
                 'slug' => 'configuracion',
                 'icono' => 'fa-cog',
-                'orden' => 7,
+                'orden' => 8,
                 'activo' => true,
                 'parent_id' => null
             ],

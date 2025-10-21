@@ -16,7 +16,6 @@ class Rol extends Model
         'descripcion',
         'nivel_jerarquico',
         'es_sistema',
-        'organizacion_id',
     ];
 
     protected $casts = [

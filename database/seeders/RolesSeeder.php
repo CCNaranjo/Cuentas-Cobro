@@ -19,7 +19,6 @@ class RolesSeeder extends Seeder
             'descripcion' => 'Administrador Global del Sistema',
             'nivel_jerarquico' => 1,
             'es_sistema' => true,
-            'organizacion_id' => null
         ]);
 
         $contratista = Rol::create([
@@ -27,7 +26,6 @@ class RolesSeeder extends Seeder
             'descripcion' => 'Contratista',
             'nivel_jerarquico' => 4,
             'es_sistema' => true,
-            'organizacion_id' => null
         ]);
 
         $usuarioBasico = Rol::create([
@@ -35,7 +33,6 @@ class RolesSeeder extends Seeder
             'descripcion' => 'Usuario sin vinculación',
             'nivel_jerarquico' => 5,
             'es_sistema' => true,
-            'organizacion_id' => null
         ]);
 
         // 2. CREAR ROLES BASE PARA ALCALDÍAS (plantillas)
@@ -84,7 +81,7 @@ class RolesSeeder extends Seeder
         $adminGlobal->permisos()->attach($todosPermisos);
 
         // CONTRATISTA - Solo sus recursos
-        $permisosContratista = Permiso::whereIn('slug', [
+        $slugsContratista = [
             'ver-dashboard',
             'ver-mis-contratos',
             'ver-mis-cuentas',
@@ -92,17 +89,34 @@ class RolesSeeder extends Seeder
             'editar-cuenta-cobro',
             'radicar-cuenta-cobro',
             'ver-historial-cuenta',
-        ])->pluck('id');
-        $contratista->permisos()->attach($permisosContratista);
+        ];
 
-        // USUARIO BÁSICO - Mínimo
-        $permisosBasico = Permiso::whereIn('slug', [
+        // 1. Obtener solo los IDs de los permisos
+        $permisosContratista = Permiso::whereIn('slug', $slugsContratista)->pluck('id');
+
+        // Opcional: Para debug, verificar cuántos encontró
+        if ($permisosContratista->count() !== count($slugsContratista)) {
+            $this->command->warning("Seeder: No se encontraron todos los permisos para Contratista.");
+        }
+
+        // 2. Vincular (usando sync para mayor robustez)
+        $contratista->permisos()->sync($permisosContratista); 
+        $this->command->info("Permisos asignados al rol Contratista ({$permisosContratista->count()} permisos).");
+
+        $slugsUsuarioBasico = [
             'ver-dashboard'
-        ])->pluck('id');
-        $usuarioBasico->permisos()->attach($permisosBasico);
+        ];
 
-        $this->command->info('  → Permisos de Admin Global: ' . $todosPermisos->count());
-        $this->command->info('  → Permisos de Contratista: ' . $permisosContratista->count());
-        $this->command->info('  → Permisos de Usuario Básico: ' . $permisosBasico->count());
+        // 1. Obtener solo los IDs de los permisos
+        $permisosUsuarioBasico = Permiso::whereIn('slug', $slugsUsuarioBasico)->pluck('id');
+
+        // Opcional: Para debug, verificar cuántos encontró
+        if ($permisosUsuarioBasico->count() !== count($slugsUsuarioBasico)) {
+            $this->command->warning("Seeder: No se encontraron todos los permisos para Contratista.");
+        }
+
+        // 2. Vincular (usando sync para mayor robustez)
+        $usuarioBasico->permisos()->sync($permisosUsuarioBasico); 
+        $this->command->info("Permisos asignados al rol UsuarioBasico ({$permisosUsuarioBasico->count()} permisos).");
     }
 }
