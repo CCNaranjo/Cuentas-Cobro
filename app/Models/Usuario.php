@@ -58,15 +58,15 @@ class Usuario extends Authenticatable
     public function organizacionesVinculadas()
     {
         return $this->belongsToMany(Organizacion::class, 'usuario_organizacion_rol', 'usuario_id', 'organizacion_id')
-                    ->withPivot('rol_id', 'estado', 'fecha_asignacion')
-                    ->withTimestamps();
+            ->withPivot('rol_id', 'estado', 'fecha_asignacion')
+            ->withTimestamps();
     }
 
     public function roles()
     {
         return $this->belongsToMany(Rol::class, 'usuario_organizacion_rol', 'usuario_id', 'rol_id')
-                    ->withPivot('organizacion_id', 'estado')
-                    ->withTimestamps();
+            ->withPivot('organizacion_id', 'estado')
+            ->withTimestamps();
     }
 
     public function contratosComoContratista()
@@ -102,11 +102,11 @@ class Usuario extends Authenticatable
     public function tieneRol($nombreRol, $organizacionId = null)
     {
         return $this->roles()
-                    ->where('nombre', $nombreRol)
-                    ->when($organizacionId, function($query) use ($organizacionId) {
-                        $query->wherePivot('organizacion_id', $organizacionId);
-                    })
-                    ->exists();
+            ->where('nombre', $nombreRol)
+            ->when($organizacionId, function ($query) use ($organizacionId) {
+                $query->wherePivot('organizacion_id', $organizacionId);
+            })
+            ->exists();
     }
 
     public function tienePermiso($slugPermiso, $organizacionId = null)
@@ -118,18 +118,37 @@ class Usuario extends Authenticatable
 
         $organizacionId = $organizacionId ?? session('organizacion_actual');
 
+        if (!$organizacionId) {
+            return false;
+        }
+
+        // Verificar a través de la relación roles con la tabla pivote
         return $this->roles()
-                    /*
-                    ->when($organizacionId, function($query) use ($organizacionId) {
-                        $query->wherePivot('organizacion_id', $organizacionId);
-                    })
-                    */
-                    ->whereHas('permisos', function($query) use ($slugPermiso) {
-                        $query->where('slug', $slugPermiso);
-                    })
-                    ->wherePivot('organizacion_id', $organizacionId) // CORRECCIÓN: usar wherePivot
-                    ->wherePivot('estado', 'activo')
-                    ->exists();
+            ->wherePivot('organizacion_id', $organizacionId)
+            ->wherePivot('estado', 'activo')
+            ->whereHas('permisos', function ($query) use ($slugPermiso) {
+                $query->where('slug', $slugPermiso);
+            })
+            ->exists();
+    }
+
+    public function debugTienePermiso($slugPermiso, $organizacionId = null)
+    {
+        $organizacionId = $organizacionId ?? session('organizacion_actual');
+
+        \Log::info("Verificando permiso: {$slugPermiso} para organización: {$organizacionId}");
+
+        $rolesConPermiso = $this->roles()
+            ->wherePivot('organizacion_id', $organizacionId)
+            ->wherePivot('estado', 'activo')
+            ->whereHas('permisos', function ($query) use ($slugPermiso) {
+                $query->where('slug', $slugPermiso);
+            })
+            ->get();
+
+        \Log::info("Roles con permiso encontrados: " . $rolesConPermiso->count());
+
+        return $rolesConPermiso->isNotEmpty();
     }
 
     public function esAdminGlobal()

@@ -24,9 +24,10 @@ class Permiso extends Model
         return $this->belongsTo(Modulo::class, 'modulo_id');
     }
 
+    // En app/Models/Permiso.php
     public function roles()
     {
         return $this->belongsToMany(Rol::class, 'rol_permisos', 'permiso_id', 'rol_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 }

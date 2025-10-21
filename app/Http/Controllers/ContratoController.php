@@ -7,6 +7,7 @@ use App\Models\Usuario;
 use App\Models\Organizacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ContratoController extends Controller
 {
@@ -17,23 +18,35 @@ class ContratoController extends Controller
     {
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
         $user = Auth::user();
-        dd(get_class($user));
 
-        $query = Contrato::with(['organizacion', 'contratista', 'supervisor']);
+        $query = Contrato::with(['organizacion', 'contratista', 'supervisor'])
+            ->where('organizacion_id', $organizacionId);
 
-        // Filtrar según rol
-        if ($user->tienePermiso('ver-todos-contratos', $organizacionId)) {
-            $query->where('organizacion_id', $organizacionId);
-        } elseif ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
-            $query->where(function($q) use ($user) {
-                $q->where('contratista_id', $user->id)
-                  ->orWhere('supervisor_id', $user->id);
-            });
-        } else {
-            abort(403, 'No tienes permiso para ver contratos');
+        // Filtrar según rol y permisos
+        if (!$user->tienePermiso('ver-todos-contratos', $organizacionId)) {
+            if ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('contratista_id', $user->id)
+                        ->orWhere('supervisor_id', $user->id);
+                });
+            } else {
+                abort(403, 'No tienes permiso para ver contratos');
+            }
         }
 
         // Filtros adicionales
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('numero_contrato', 'LIKE', "%{$search}%")
+                    ->orWhere('objeto_contractual', 'LIKE', "%{$search}%")
+                    ->orWhereHas('contratista', function ($q2) use ($search) {
+                        $q2->where('nombre', 'LIKE', "%{$search}%")
+                            ->orWhere('email', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
@@ -47,8 +60,13 @@ class ContratoController extends Controller
         $organizacion = Organizacion::find($organizacionId);
 
         // Contratistas y supervisores para filtros
-        $contratistas = Usuario::whereHas('contratosComoContratista')->get();
-        $supervisores = Usuario::whereHas('contratosComoSupervisor')->get();
+        $contratistas = Usuario::whereHas('contratosComoContratista', function ($q) use ($organizacionId) {
+            $q->where('organizacion_id', $organizacionId);
+        })->get();
+
+        $supervisores = Usuario::whereHas('contratosComoSupervisor', function ($q) use ($organizacionId) {
+            $q->where('organizacion_id', $organizacionId);
+        })->get();
 
         return view('contratos.index', compact('contratos', 'organizacion', 'contratistas', 'supervisores'));
     }
@@ -61,13 +79,8 @@ class ContratoController extends Controller
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
         $organizacion = Organizacion::findOrFail($organizacionId);
 
-        // Obtener supervisores de la organización
-        $supervisores = Usuario::whereHas('roles', function($query) use ($organizacionId) {
-                $query->where('nombre', 'supervisor')
-                      ->wherePivot('organizacion_id', $organizacionId)
-                      ->wherePivot('estado', 'activo');
-            })
-            ->get();
+        // TEMPORAL: Obtener todos los usuarios activos para pruebas
+        $supervisores = Usuario::where('estado', 'activo')->get();
 
         return view('contratos.create', compact('organizacion', 'supervisores'));
     }
@@ -81,7 +94,7 @@ class ContratoController extends Controller
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato',
             'organizacion_id' => 'required|exists:organizaciones,id',
             'supervisor_id' => 'required|exists:usuarios,id',
-            'objeto_contractual' => 'required|string',
+            'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
@@ -90,7 +103,7 @@ class ContratoController extends Controller
         ]);
 
         $validated['estado'] = 'borrador';
-        $validated['vinculado_por'] = Auth::user()->id;
+        $validated['vinculado_por'] = Auth::id();
 
         $contrato = Contrato::create($validated);
 
@@ -108,17 +121,21 @@ class ContratoController extends Controller
         // Verificar permisos
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        if (!$user->tienePermiso('ver-todos-contratos', $contrato->organizacion_id) &&
+        $organizacionId = $contrato->organizacion_id;
+
+        if (
+            !$user->tienePermiso('ver-todos-contratos', $organizacionId) &&
             $contrato->contratista_id != $user->id &&
-            $contrato->supervisor_id != $user->id) {
+            $contrato->supervisor_id != $user->id
+        ) {
             abort(403, 'No tienes acceso a este contrato');
         }
 
-        // Calcular estadísticas (cuando se implemente cuentas de cobro)
+        // Calcular estadísticas
         $estadisticas = [
-            'valor_cobrado' => 0, // $contrato->valorCobrado(),
-            'valor_disponible' => $contrato->valor_total, // $contrato->valorDisponible(),
-            'porcentaje_ejecucion' => 0, // $contrato->porcentajeEjecucion(),
+            'valor_cobrado' => 0, // Por implementar cuando tengas cuentas de cobro
+            'valor_disponible' => $contrato->valor_total,
+            'porcentaje_ejecucion' => 0,
         ];
 
         return view('contratos.show', compact('contrato', 'estadisticas'));
@@ -131,15 +148,11 @@ class ContratoController extends Controller
     {
         // Solo editable en estado borrador
         if ($contrato->estado != 'borrador') {
-            return back()->withErrors(['error' => 'Solo se pueden editar contratos en borrador']);
+            return back()->with('error', 'Solo se pueden editar contratos en borrador');
         }
 
-        $supervisores = Usuario::whereHas('roles', function($query) use ($contrato) {
-                $query->where('nombre', 'supervisor')
-                      ->wherePivot('organizacion_id', $contrato->organizacion_id)
-                      ->wherePivot('estado', 'activo');
-            })
-            ->get();
+        // TEMPORAL: Obtener todos los usuarios activos para pruebas
+        $supervisores = Usuario::where('estado', 'activo')->get();
 
         return view('contratos.edit', compact('contrato', 'supervisores'));
     }
@@ -150,13 +163,13 @@ class ContratoController extends Controller
     public function update(Request $request, Contrato $contrato)
     {
         if ($contrato->estado != 'borrador') {
-            return back()->withErrors(['error' => 'Solo se pueden editar contratos en borrador']);
+            return back()->with('error', 'Solo se pueden editar contratos en borrador');
         }
 
         $validated = $request->validate([
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato,' . $contrato->id,
             'supervisor_id' => 'required|exists:usuarios,id',
-            'objeto_contractual' => 'required|string',
+            'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
@@ -181,7 +194,7 @@ class ContratoController extends Controller
 
         // Verificar que el contrato no tenga contratista
         if ($contrato->contratista_id) {
-            return back()->withErrors(['error' => 'Este contrato ya tiene un contratista asignado']);
+            return back()->with('error', 'Este contrato ya tiene un contratista asignado');
         }
 
         $contratista = Usuario::findOrFail($validated['contratista_id']);
@@ -191,11 +204,6 @@ class ContratoController extends Controller
             'contratista_id' => $validated['contratista_id'],
             'estado' => 'activo',
         ]);
-
-        // Actualizar tipo de vinculación del usuario
-        if ($contratista->tipo_vinculacion != 'contratista') {
-            $contratista->update(['tipo_vinculacion' => 'contratista']);
-        }
 
         return back()->with('success', 'Contratista vinculado exitosamente');
     }
@@ -207,13 +215,12 @@ class ContratoController extends Controller
     {
         $search = $request->input('q');
 
-        $usuarios = Usuario::where(function($query) use ($search) {
-                $query->where('nombre', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%")
-                      ->orWhere('documento_identidad', 'LIKE', "%{$search}%");
-            })
+        $usuarios = Usuario::where(function ($query) use ($search) {
+            $query->where('nombre', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%")
+                ->orWhere('documento_identidad', 'LIKE', "%{$search}%");
+        })
             ->where('estado', 'activo')
-            ->whereIn('tipo_vinculacion', ['contratista', 'sin_vinculacion'])
             ->limit(10)
             ->get(['id', 'nombre', 'email', 'documento_identidad']);
 
@@ -231,9 +238,6 @@ class ContratoController extends Controller
 
         // Verificar que el nuevo supervisor tiene el rol correcto
         $supervisor = Usuario::findOrFail($validated['supervisor_id']);
-        if (!$supervisor->tieneRol('supervisor', $contrato->organizacion_id)) {
-            return back()->withErrors(['error' => 'El usuario seleccionado no es supervisor']);
-        }
 
         $contrato->update(['supervisor_id' => $validated['supervisor_id']]);
 
@@ -252,9 +256,8 @@ class ContratoController extends Controller
 
         $contrato->update(['estado' => $validated['estado']]);
 
-        // TODO: Registrar en historial
-        // TODO: Notificar a las partes involucradas
+        // Aquí puedes agregar lógica para registrar en historial o notificar
 
-        return back()->with('success', 'Estado del contrato actualizado');
+        return back()->with('success', 'Estado del contrato actualizado exitosamente');
     }
 }

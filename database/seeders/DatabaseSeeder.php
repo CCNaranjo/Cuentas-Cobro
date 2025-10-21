@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             AdminGlobalSeeder::class,
             AlcaldiaEjemploSeeder::class,
-
+            ContratoSeeder::class,
         ]);
     }
 }
