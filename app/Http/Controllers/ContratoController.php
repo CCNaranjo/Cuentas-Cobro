@@ -79,10 +79,11 @@ class ContratoController extends Controller
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
         $organizacion = Organizacion::findOrFail($organizacionId);
 
-        // TEMPORAL: Obtener todos los usuarios activos para pruebas
+        // Obtener supervisores y contratistas
         $supervisores = Usuario::where('estado', 'activo')->get();
+        $contratistas = Usuario::where('estado', 'activo')->get();
 
-        return view('contratos.create', compact('organizacion', 'supervisores'));
+        return view('contratos.create', compact('organizacion', 'supervisores', 'contratistas'));
     }
 
     /**
@@ -94,21 +95,27 @@ class ContratoController extends Controller
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato',
             'organizacion_id' => 'required|exists:organizaciones,id',
             'supervisor_id' => 'required|exists:usuarios,id',
+            'contratista_id' => 'nullable|exists:usuarios,id',
             'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'porcentaje_retencion_fuente' => 'required|numeric|min:0|max:100',
             'porcentaje_estampilla' => 'required|numeric|min:0|max:100',
+            'estado' => 'required|in:borrador,activo,suspendido',
         ]);
 
-        $validated['estado'] = 'borrador';
         $validated['vinculado_por'] = Auth::id();
+
+        // Si se asigna contratista, cambiar estado a activo
+        if (!empty($validated['contratista_id']) && $validated['estado'] == 'borrador') {
+            $validated['estado'] = 'activo';
+        }
 
         $contrato = Contrato::create($validated);
 
         return redirect()->route('contratos.show', $contrato)
-            ->with('success', 'Contrato creado exitosamente. Ahora puedes vincular un contratista.');
+            ->with('success', 'Contrato creado exitosamente.');
     }
 
     /**
@@ -151,10 +158,11 @@ class ContratoController extends Controller
             return back()->with('error', 'Solo se pueden editar contratos en borrador');
         }
 
-        // TEMPORAL: Obtener todos los usuarios activos para pruebas
+        // Obtener supervisores y contratistas
         $supervisores = Usuario::where('estado', 'activo')->get();
+        $contratistas = Usuario::where('estado', 'activo')->get();
 
-        return view('contratos.edit', compact('contrato', 'supervisores'));
+        return view('contratos.edit', compact('contrato', 'supervisores', 'contratistas'));
     }
 
     /**
@@ -162,19 +170,17 @@ class ContratoController extends Controller
      */
     public function update(Request $request, Contrato $contrato)
     {
-        if ($contrato->estado != 'borrador') {
-            return back()->with('error', 'Solo se pueden editar contratos en borrador');
-        }
-
         $validated = $request->validate([
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato,' . $contrato->id,
             'supervisor_id' => 'required|exists:usuarios,id',
+            'contratista_id' => 'nullable|exists:usuarios,id',
             'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'porcentaje_retencion_fuente' => 'required|numeric|min:0|max:100',
             'porcentaje_estampilla' => 'required|numeric|min:0|max:100',
+            'estado' => 'required|in:borrador,activo,terminado,suspendido',
         ]);
 
         $contrato->update($validated);

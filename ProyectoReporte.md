@@ -189,7 +189,6 @@
 - `contratos/show.blade.php` ⏳
 - `contratos/edit.blade.php` ⏳
 - ⏳ Cambiar supervisor de contrato
-- ⏳ Historial de modificaciones
 - ⏳ Documentos del contrato
 - ⏳ Gráfico de ejecución financiera
 - ⏳ Liquidación de contrato
