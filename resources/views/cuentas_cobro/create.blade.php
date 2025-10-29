@@ -221,47 +221,180 @@
     let itemCounter = 0;
     let porcentajeRetencion = 0;
     let porcentajeEstampilla = 0;
+    const STORAGE_KEY = 'cuentaCobro_create_draft';
 
     // Agregar primer item al cargar
     document.addEventListener('DOMContentLoaded', function() {
-        agregarItem();
-        
+        // Intentar restaurar datos guardados
+        restaurarDatosPersistidos();
+
+        // Si no hay items restaurados, agregar uno vacío
+        if (document.querySelectorAll('.item-row').length === 0) {
+            agregarItem();
+        }
+
         // Listener para cambio de contrato
         document.getElementById('contrato_id').addEventListener('change', function() {
             const option = this.options[this.selectedIndex];
             porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
             porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
             calcularTotales();
+            guardarBorrador();
         });
+
+        // Guardar automáticamente cuando se modifican campos
+        configurarAutoguardado();
     });
 
-    function agregarItem() {
-        itemCounter++;
+    // Guardar borrador en localStorage
+    function guardarBorrador() {
+        const datos = {
+            contrato_id: document.querySelector('[name="contrato_id"]').value,
+            fecha_radicacion: document.querySelector('[name="fecha_radicacion"]').value,
+            periodo_cobrado: document.querySelector('[name="periodo_cobrado"]').value,
+            observaciones: document.querySelector('[name="observaciones"]').value,
+            items: [],
+            itemCounter: itemCounter,
+            porcentajeRetencion: porcentajeRetencion,
+            porcentajeEstampilla: porcentajeEstampilla,
+            timestamp: new Date().toISOString()
+        };
+
+        // Guardar items
+        document.querySelectorAll('.item-row').forEach((itemRow, index) => {
+            const itemId = itemRow.getAttribute('data-item');
+            datos.items.push({
+                itemId: itemId,
+                descripcion: itemRow.querySelector('.item-descripcion').value,
+                cantidad: itemRow.querySelector('.item-cantidad').value,
+                valor_unitario: itemRow.querySelector('.item-valor-unitario').value,
+                porcentaje_avance: itemRow.querySelector('[name*="[porcentaje_avance]"]').value
+            });
+        });
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+        console.log('Borrador guardado automáticamente');
+    }
+
+    // Restaurar datos persistidos
+    function restaurarDatosPersistidos() {
+        const datosGuardados = localStorage.getItem(STORAGE_KEY);
+
+        if (!datosGuardados) {
+            return;
+        }
+
+        try {
+            const datos = JSON.parse(datosGuardados);
+
+            // Mostrar notificación de restauración
+            mostrarNotificacionRestauracion(datos.timestamp);
+
+            // Restaurar campos generales
+            if (datos.contrato_id) {
+                const contratoSelect = document.querySelector('[name="contrato_id"]');
+                contratoSelect.value = datos.contrato_id;
+
+                // Cargar porcentajes del contrato
+                const option = contratoSelect.options[contratoSelect.selectedIndex];
+                porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
+                porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
+            }
+
+            if (datos.fecha_radicacion) {
+                document.querySelector('[name="fecha_radicacion"]').value = datos.fecha_radicacion;
+            }
+
+            if (datos.periodo_cobrado) {
+                document.querySelector('[name="periodo_cobrado"]').value = datos.periodo_cobrado;
+            }
+
+            if (datos.observaciones) {
+                document.querySelector('[name="observaciones"]').value = datos.observaciones;
+            }
+
+            // Restaurar counter
+            itemCounter = datos.itemCounter || 0;
+
+            // Restaurar items
+            if (datos.items && datos.items.length > 0) {
+                datos.items.forEach(item => {
+                    agregarItemRestaurado(item);
+                });
+            }
+
+            calcularTotales();
+        } catch (error) {
+            console.error('Error al restaurar datos:', error);
+        }
+    }
+
+    // Mostrar notificación de restauración
+    function mostrarNotificacionRestauracion(timestamp) {
+        const fecha = new Date(timestamp);
+        const fechaFormateada = fecha.toLocaleString('es-CO');
+
+        const notificacion = document.createElement('div');
+        notificacion.className = 'mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4';
+        notificacion.innerHTML = `
+            <div class="flex items-start justify-between">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 text-xl mr-3 mt-0.5"></i>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-blue-800 mb-1">Borrador restaurado</h3>
+                        <p class="text-sm text-blue-700">
+                            Se han restaurado los datos guardados el ${fechaFormateada}
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="limpiarBorrador()" class="text-blue-600 hover:text-blue-800 text-sm font-semibold ml-4">
+                    Descartar borrador
+                </button>
+            </div>
+        `;
+
+        // Insertar después del header
+        const header = document.querySelector('.mb-6');
+        header.after(notificacion);
+    }
+
+    // Limpiar borrador
+    function limpiarBorrador() {
+        if (confirm('¿Está seguro de que desea descartar el borrador guardado y empezar de nuevo?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    }
+
+    // Agregar item restaurado
+    function agregarItemRestaurado(itemData) {
         const container = document.getElementById('itemsContainer');
         const noItemsMsg = document.getElementById('noItemsMessage');
-        
+        const itemId = itemData.itemId;
+
         const itemHTML = `
-            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemCounter}">
+            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemId}">
                 <div class="flex items-start justify-between mb-4">
-                    <h3 class="font-semibold text-gray-800">Item #${itemCounter}</h3>
-                    <button type="button" 
-                            onclick="eliminarItem(${itemCounter})"
+                    <h3 class="font-semibold text-gray-800">Item #${itemId}</h3>
+                    <button type="button"
+                            onclick="eliminarItem(${itemId})"
                             class="text-red-600 hover:text-red-800 transition-colors">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <!-- Descripción -->
                     <div class="md:col-span-5">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Descripción <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="items[${itemCounter}][descripcion]" 
+                        <textarea name="items[${itemId}][descripcion]"
                                   rows="2"
                                   required
                                   placeholder="Descripción del trabajo realizado..."
-                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                  oninput="guardarBorrador()">${itemData.descripcion || ''}</textarea>
                     </div>
 
                     <!-- Cantidad -->
@@ -269,13 +402,13 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Cantidad <span class="text-red-500">*</span>
                         </label>
-                        <input type="number" 
-                               name="items[${itemCounter}][cantidad]" 
+                        <input type="number"
+                               name="items[${itemId}][cantidad]"
                                step="0.01"
                                min="0"
-                               value="1"
+                               value="${itemData.cantidad || 1}"
                                required
-                               onchange="calcularValorItem(${itemCounter})"
+                               onchange="calcularValorItem(${itemId}); guardarBorrador()"
                                class="item-cantidad w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
 
@@ -284,12 +417,13 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Valor Unitario <span class="text-red-500">*</span>
                         </label>
-                        <input type="number" 
-                               name="items[${itemCounter}][valor_unitario]" 
+                        <input type="number"
+                               name="items[${itemId}][valor_unitario]"
                                step="0.01"
                                min="0"
+                               value="${itemData.valor_unitario || ''}"
                                required
-                               onchange="calcularValorItem(${itemCounter})"
+                               onchange="calcularValorItem(${itemId}); guardarBorrador()"
                                class="item-valor-unitario w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
 
@@ -298,12 +432,14 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             % Avance
                         </label>
-                        <input type="number" 
-                               name="items[${itemCounter}][porcentaje_avance]" 
+                        <input type="number"
+                               name="items[${itemId}][porcentaje_avance]"
                                step="0.01"
                                min="0"
                                max="100"
+                               value="${itemData.porcentaje_avance || ''}"
                                placeholder="0"
+                               oninput="guardarBorrador()"
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
 
@@ -312,7 +448,111 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Valor Total
                         </label>
-                        <input type="text" 
+                        <input type="text"
+                               id="valorTotal${itemId}"
+                               readonly
+                               class="item-valor-total w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg font-semibold text-green-600">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', itemHTML);
+        noItemsMsg.style.display = 'none';
+
+        // Calcular valor del item
+        calcularValorItem(itemId);
+    }
+
+    // Configurar autoguardado
+    function configurarAutoguardado() {
+        // Guardar al cambiar campos generales
+        document.querySelector('[name="contrato_id"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="fecha_radicacion"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_cobrado"]').addEventListener('input', guardarBorrador);
+        document.querySelector('[name="observaciones"]').addEventListener('input', guardarBorrador);
+    }
+
+    function agregarItem() {
+        itemCounter++;
+        const container = document.getElementById('itemsContainer');
+        const noItemsMsg = document.getElementById('noItemsMessage');
+
+        const itemHTML = `
+            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemCounter}">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Item #${itemCounter}</h3>
+                    <button type="button"
+                            onclick="eliminarItem(${itemCounter})"
+                            class="text-red-600 hover:text-red-800 transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <!-- Descripción -->
+                    <div class="md:col-span-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Descripción <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="items[${itemCounter}][descripcion]"
+                                  rows="2"
+                                  required
+                                  placeholder="Descripción del trabajo realizado..."
+                                  oninput="guardarBorrador()"
+                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                    </div>
+
+                    <!-- Cantidad -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Cantidad <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number"
+                               name="items[${itemCounter}][cantidad]"
+                               step="0.01"
+                               min="0"
+                               value="1"
+                               required
+                               onchange="calcularValorItem(${itemCounter}); guardarBorrador()"
+                               class="item-cantidad w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+
+                    <!-- Valor Unitario -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Valor Unitario <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number"
+                               name="items[${itemCounter}][valor_unitario]"
+                               step="0.01"
+                               min="0"
+                               required
+                               onchange="calcularValorItem(${itemCounter}); guardarBorrador()"
+                               class="item-valor-unitario w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+
+                    <!-- % Avance -->
+                    <div class="md:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            % Avance
+                        </label>
+                        <input type="number"
+                               name="items[${itemCounter}][porcentaje_avance]"
+                               step="0.01"
+                               min="0"
+                               max="100"
+                               placeholder="0"
+                               oninput="guardarBorrador()"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+
+                    <!-- Valor Total -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Valor Total
+                        </label>
+                        <input type="text"
                                id="valorTotal${itemCounter}"
                                readonly
                                class="item-valor-total w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg font-semibold text-green-600">
@@ -320,9 +560,10 @@
                 </div>
             </div>
         `;
-        
+
         container.insertAdjacentHTML('beforeend', itemHTML);
         noItemsMsg.style.display = 'none';
+        guardarBorrador();
     }
 
     function eliminarItem(itemId) {
@@ -330,13 +571,15 @@
         if (item) {
             item.remove();
             calcularTotales();
-            
+
             // Mostrar mensaje si no hay items
             const container = document.getElementById('itemsContainer');
             const noItemsMsg = document.getElementById('noItemsMessage');
             if (container.children.length === 0) {
                 noItemsMsg.style.display = 'block';
             }
+
+            guardarBorrador();
         }
     }
 
@@ -382,12 +625,15 @@
     // Validación antes de enviar
     document.getElementById('formCuentaCobro').addEventListener('submit', function(e) {
         const itemsCount = document.querySelectorAll('.item-row').length;
-        
+
         if (itemsCount === 0) {
             e.preventDefault();
             alert('Debe agregar al menos un item a la cuenta de cobro');
             return false;
         }
+
+        // Limpiar el borrador al enviar exitosamente
+        localStorage.removeItem(STORAGE_KEY);
     });
 </script>
 @endpush
