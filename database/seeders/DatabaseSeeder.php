@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AlcaldiaEjemploSeeder::class,
             AdminOrganizacionSeeder::class,
             ContratoSeeder::class,
+            CuentaCobroSeeder::class,
         ]);
     }
 }
