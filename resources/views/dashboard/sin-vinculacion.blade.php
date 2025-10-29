@@ -114,18 +114,35 @@
                                     type="text" 
                                     name="codigo_vinculacion" 
                                     placeholder="ORG-2025-XXXXXX"
+                                    value="{{ old('codigo_vinculacion') }}"
                                     required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus text-center font-mono"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center font-mono @error('codigo_vinculacion') border-red-500 @enderror"
                                 >
+                                @error('codigo_vinculacion')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
                             </div>
                             <button 
                                 type="submit" 
-                                class="w-full bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all"
+                                class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all"
                             >
-                                <i class="fas fa-link mr-2"></i>
+                                <i class="bi bi-link-45deg mr-2"></i>
                                 Vincular con Código
                             </button>
                         </form>
+
+<!-- Mensajes de éxito -->
+@if(session('success'))
+<div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+    <div class="flex items-center">
+        <i class="bi bi-check-circle text-green-500 mr-2"></i>
+        <span class="text-green-700">{{ session('success') }}</span>
+        @if(session('organizacion'))
+            <strong class="ml-1">{{ session('organizacion') }}</strong>
+        @endif
+    </div>
+</div>
+@endif
                     </div>
 
                     <!-- Opción 2: Email Institucional -->

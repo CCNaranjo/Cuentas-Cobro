@@ -10,6 +10,7 @@ use App\Http\Middleware\VerificarAdminGlobal;
 use App\Http\Middleware\VerificarPermiso;
 use App\Http\Middleware\VerificarAccesoOrganizacion;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\RolesController;
 
 // REGISTRO MANUAL DE MIDDLEWERS - SOLUCIÓN TEMPORAL
 app('router')->aliasMiddleware('verificar.permiso', VerificarPermiso::class);
@@ -23,18 +24,23 @@ app('router')->aliasMiddleware('verificar.admin.global', VerificarAdminGlobal::c
 */
 
 // Autenticación
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::get('/login', [AuthController::class, 'showLoginForm'])
+    ->name('login');
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-Route::get('/register', [AuthController::class, 'showRegistrationForm'])->name('register');
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->name('logout');
+Route::get('/register', [AuthController::class, 'showRegistrationForm'])
+    ->name('register');
 Route::post('/register', [AuthController::class, 'register']);
-Route::get('/verify-email/{token}', [AuthController::class, 'verifyEmail'])->name('verify-email');
+Route::get('/verify-email/{token}', [AuthController::class, 'verifyEmail'])
+    ->name('verify-email');
 
 // Rutas protegidas
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
     Route::get('/', function () {
         return redirect()->route('dashboard');
     });
@@ -90,26 +96,54 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware([VerificarAccesoOrganizacion::class, 'verificar.permiso:ver-usuarios'])
         ->prefix('usuarios')
         ->group(function () {
-            Route::get('/', [UsuarioController::class, 'index'])->name('usuarios.index');
-            Route::get('/pendientes', [UsuarioController::class, 'pendientes'])->name('usuarios.pendientes');
-
+            Route::get('/', [UsuarioController::class, 'index'])
+                ->name('usuarios.index');
+            Route::get('/pendientes', [UsuarioController::class, 'pendientes'])
+                ->name('usuarios.pendientes');
             Route::post('/asignar-rol', [UsuarioController::class, 'asignarRol'])
-                ->middleware('verificar.permiso:asignar-rol')
-                ->name('usuarios.asignar-rol');
-
+                ->middleware(VerificarPermiso::class . ':asignar-rol')
+                ->name('usuarios.asignar-rol');            
             Route::post('/{id}/rechazar', [UsuarioController::class, 'rechazarVinculacion'])
-                ->name('usuarios.rechazar');
-
+                ->name('usuarios.rechazar');            
             Route::post('/{id}/cambiar-estado', [UsuarioController::class, 'cambiarEstado'])
-                ->middleware('verificar.permiso:cambiar-estado-usuario')
+                ->middleware(VerificarPermiso::class . ':cambiar-estado-usuario')
                 ->name('usuarios.cambiar-estado');
-
             Route::post('/{id}/cambiar-rol', [UsuarioController::class, 'cambiarRol'])
-                ->middleware('verificar.permiso:editar-usuario')
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
                 ->name('usuarios.cambiar-rol');
-
+            Route::get('/{id}/edit', [UsuarioController::class, 'edit'])
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
+                ->name('usuarios.edit');
+            Route::put('/{id}', [UsuarioController::class, 'update'])
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
+                ->name('usuarios.update');            
             Route::get('/{id}', [UsuarioController::class, 'show'])
                 ->name('usuarios.show');
+        });
+
+    // ============================================
+    // GESTIÓN DE ROLES Y PERMISOS
+    // Solo admin_global puede gestionar roles
+    // ============================================
+    Route::middleware([VerificarAdminGlobal::class])
+        ->prefix('roles')
+        ->group(function () {
+            Route::get('/', [RolesController::class, 'index'])
+                ->name('roles.index');
+            Route::get('/create', [RolesController::class, 'create'])
+                ->name('roles.create');
+            Route::post('/', [RolesController::class, 'store'])
+                ->name('roles.store');
+            Route::get('/{role}', [RolesController::class, 'show'])
+                ->name('roles.show');
+            Route::get('/{role}/edit', [RolesController::class, 'edit'])
+                ->name('roles.edit');
+            Route::put('/{role}', [RolesController::class, 'update'])
+                ->name('roles.update');
+            Route::delete('/{role}', [RolesController::class, 'destroy'])
+                ->name('roles.destroy');
+            Route::get('/modulo/{moduloId}/permisos', [RolesController::class, 'getPermisosByModulo'])
+                ->name('roles.permisos-by-modulo');
         });
 
     // ============================================

@@ -54,6 +54,16 @@
                 @endif
             </a>
             @endif
+
+            <!-- Roles y permisos (Solo Admin Global) -->
+            @if(auth()->user()->esAdminGlobal())
+            <a href="{{ route('roles.index') }}" 
+               class="sidebar-link group {{ request()->routeIs('organizaciones.*') ? 'active' : '' }}">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('organizaciones.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                <i class="fas fa-building text-lg"></i>
+                <span>Roles</span>
+            </a>
+            @endif
             
             <!-- Contratos -->
             @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')) || 

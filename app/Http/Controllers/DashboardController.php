@@ -16,6 +16,7 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
+        /** @var \App\Models\Usuario $user */ 
         $user = Auth::user();
 
         // Dashboard Admin Global

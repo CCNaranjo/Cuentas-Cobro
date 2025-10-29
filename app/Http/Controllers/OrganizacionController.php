@@ -8,6 +8,8 @@ use App\Models\Rol;
 use App\Models\Usuario;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class OrganizacionController extends Controller
 {
@@ -36,11 +38,12 @@ class OrganizacionController extends Controller
     }
 
     /**
-     * Guardar nueva organización
+     * Guardar nueva organización con administrador
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Datos de la organización
             'nombre_oficial' => 'required|string|max:255',
             'nit' => 'required|string|unique:organizaciones,nit',
             'departamento' => 'required|string|max:100',
@@ -50,20 +53,68 @@ class OrganizacionController extends Controller
             'email_institucional' => 'required|email|unique:organizaciones,email_institucional',
             'dominios_email' => 'nullable|array',
             'dominios_email.*' => 'string|starts_with:@',
+            
+            // Datos del administrador
+            'admin_nombre' => 'required|string|max:255',
+            'admin_email' => 'required|email|unique:usuarios,email',
+            'admin_password' => 'required|string|min:8|confirmed',
+            'admin_telefono' => 'nullable|string|max:20',
+            'admin_documento' => 'nullable|string|max:20|unique:usuarios,documento_identidad',
         ]);
 
-        // Generar código de vinculación único
-        $validated['codigo_vinculacion'] = $this->generarCodigoVinculacion();
-        $validated['admin_global_id'] = Auth::user()->id;
-        $validated['estado'] = 'activa';
+        DB::beginTransaction();
 
-        $organizacion = Organizacion::create($validated);
+        try {
+            // Generar código de vinculación único
+            $validated['codigo_vinculacion'] = $this->generarCodigoVinculacion();
+            $validated['admin_global_id'] = Auth::user()->id;
+            $validated['estado'] = 'activa';
 
-        // Clonar roles base para esta organización
-        $this->clonarRolesBase($organizacion);
+            // Crear organización
+            $organizacion = Organizacion::create($validated);
 
-        return redirect()->route('organizaciones.show', $organizacion)
-            ->with('success', 'Organización creada exitosamente. Código de vinculación: ' . $validated['codigo_vinculacion']);
+            // Crear usuario administrador
+            $admin = Usuario::create([
+                'nombre' => $validated['admin_nombre'],
+                'email' => $validated['admin_email'],
+                'password' => Hash::make($validated['admin_password']),
+                'telefono' => $validated['admin_telefono'],
+                'documento_identidad' => $validated['admin_documento'],
+                'tipo_vinculacion' => 'organizacion',
+                'estado' => 'activo',
+                'email_verificado_en' => now(), // Auto-verificar para admin
+            ]);
+
+            // Clonar roles base para esta organización
+            $this->clonarRolesBase($organizacion);
+
+            // Obtener el rol de admin_organizacion
+            $rolAdmin = Rol::where('nombre', 'admin_organizacion')
+                ->where('organizacion_id', $organizacion->id)
+                ->first();
+
+            if (!$rolAdmin) {
+                throw new \Exception('No se pudo encontrar el rol de administrador para la organización');
+            }
+
+            // Vincular administrador a la organización
+            $organizacion->usuarios()->attach($admin->id, [
+                'rol_id' => $rolAdmin->id,
+                'estado' => 'activo',
+                'fecha_asignacion' => now(),
+                'asignado_por' => Auth::id(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('organizaciones.show', $organizacion)
+                ->with('success', 'Organización creada exitosamente. Administrador asignado. Código de vinculación: ' . $validated['codigo_vinculacion']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->withErrors(['error' => 'Error al crear la organización: ' . $e->getMessage()]);
+        }
     }
 
     /**

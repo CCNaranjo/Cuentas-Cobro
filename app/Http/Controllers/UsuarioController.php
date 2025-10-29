@@ -9,6 +9,10 @@ use App\Models\Organizacion;
 use App\Models\UsuarioOrganizacionRol;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 
 class UsuarioController extends Controller
 {
@@ -85,7 +89,8 @@ class UsuarioController extends Controller
         ->paginate(15);
             
         // Roles disponibles para filtros y asignación
-        $roles = Rol::where('organizacion_id', $organizacionId)
+        $roles = Rol::where('nombre', '!=', 'admin_organizacion') // No permitir asignar admin desde aquí
+            ->where('nombre', '!=', 'admin_global') // No permitir asignar admin global
             ->orderBy('nivel_jerarquico')
             ->get();
         
@@ -120,12 +125,121 @@ class UsuarioController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $roles = Rol::where('organizacion_id', $organizacionId)
-            ->where('nombre', '!=', 'admin_organizacion') // No permitir asignar admin desde aquí
+        $roles = Rol::where('nombre', '!=', 'admin_organizacion') // No permitir asignar admin desde aquí
+            ->where('nombre', '!=', 'admin_global') // No permitir asignar admin global
             ->orderBy('nivel_jerarquico')
             ->get();
 
         return view('usuarios.pendientes', compact('pendientes', 'roles', 'organizacion'));
+    }
+
+    /**
+     * Muestra el formulario para editar un usuario.
+     * * @param int $id El ID del usuario a editar.
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
+    public function edit($id)
+    {
+        // 1. Obtener la organización actual (Validado por middleware)
+        $organizacionId = Session::get('organizacion_actual');
+        if (!$organizacionId) {
+            return redirect()->route('dashboard')->with('error', 'Debe seleccionar una organización.');
+        }
+
+        // 2. Cargar el usuario SIN pivot, ya que el estado es un campo directo.
+        $usuario = Usuario::findOrFail($id);
+        
+        // 3. Obtener el rol actual del usuario en esta organización
+        $rolActual = $usuario->roles()
+            ->wherePivot('organizacion_id', $organizacionId) // <-- Esto resuelve el error 1052
+            ->first();
+
+        // Cargar todos los roles disponibles de la organización actual para el <select>
+        $roles = Rol::get();
+        
+        // Obtener el objeto de la organización para el breadcrumb y el formulario
+        $organizacion = Organizacion::findOrFail($organizacionId);
+
+        // 4. Pasar datos a la vista, incluyendo el rol actual
+        return view('usuarios.edit', compact('usuario', 'organizacion', 'roles', 'rolActual'));
+    }
+
+    /**
+     * Procesa la actualización de un usuario.
+     * * @param \Illuminate\Http\Request $request
+     * @param int $id El ID del usuario a actualizar.
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, $id)
+    {
+        $organizacionId = Session::get('organizacion_actual');
+        $usuario = Usuario::findOrFail($id);
+        
+        // 1. VALIDACIÓN
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('usuarios', 'email')->ignore($usuario->id),
+            ],
+            'password' => 'nullable|string|min:8|confirmed',
+            'documento_identidad' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('usuarios', 'documento_identidad')->ignore($usuario->id),
+            ],
+            'telefono' => 'nullable|string|max:20',
+            
+            // VALIDACIÓN: El estado es un campo directo del usuario
+            'estado' => ['required', 'string', Rule::in(['activo', 'inactivo', 'suspendido'])],
+            
+            // VALIDACIÓN: El rol es para la relación Many-to-Many
+            'rol_id' => ['required', 'integer', Rule::exists('roles', 'id')],
+        ]);
+        
+        // 2. ACTUALIZAR CAMPOS BÁSICOS Y ESTADO DEL USUARIO (Directamente en la tabla 'usuarios')
+        $usuario->nombre = $request->nombre;
+        $usuario->email = $request->email;
+        $usuario->documento_identidad = $request->documento_identidad;
+        $usuario->telefono = $request->telefono;
+        $usuario->estado = $request->estado; // <-- ¡Actualización directa!
+        
+        // Actualizar contraseña solo si se proporcionó una
+        if ($request->filled('password')) {
+            $usuario->password = Hash::make($request->password);
+        }
+        
+        $usuario->save();
+        
+        // 3. ACTUALIZAR LA ASIGNACIÓN DE ROL (Esto sigue siendo una tabla intermedia: rol_usuario)
+        
+        // Asumimos una relación muchos-a-muchos entre usuarios y roles, filtrada por organización.
+        // Se recomienda usar el método detach/attach o sync sin pivot, ya que la tabla
+        // intermedia rol_usuario debería tener 'usuario_id', 'rol_id', 'organizacion_id'.
+        
+        // Usamos una lógica de sincronización más precisa para el rol en la organización actual.
+        // Nota: Esto requiere que tengas configurado el 'organizacion_id' en la tabla pivot 'rol_usuario'
+        // y que la relación en el modelo 'Usuario' sea:
+        // public function roles() { return $this->belongsToMany(Rol::class)->withPivot('organizacion_id'); }
+        
+        // 3a. Obtener el rol anterior en esta organización
+        $rolAnterior = $usuario->roles()->wherePivot('organizacion_id', $organizacionId)->first();
+
+        // 3b. Desvincular el rol anterior
+        if ($rolAnterior) {
+            $usuario->roles()->detach($rolAnterior->id);
+        }
+        
+        // 3c. Vincular el nuevo rol
+        $usuario->roles()->attach($request->rol_id, ['organizacion_id' => $organizacionId]);
+        
+        // 4. Redirección
+        return redirect()->route('usuarios.index', ['organizacion_id' => $organizacionId])
+            ->with('success', "El usuario {$usuario->nombre} ha sido actualizado exitosamente.");
     }
 
     /**
@@ -150,10 +264,6 @@ class UsuarioController extends Controller
         $usuario = Usuario::findOrFail($validated['usuario_id']);
         $rol = Rol::findOrFail($validated['rol_id']);
 
-        // Verificar que el rol pertenece a la organización
-        if ($rol->organizacion_id != $validated['organizacion_id']) {
-            return back()->withErrors(['error' => 'El rol no pertenece a esta organización']);
-        }
 
         // Verificar jerarquía - no asignar rol superior al propio (excepto Admin Global)
         if (!$user->esAdminGlobal()) {
@@ -226,25 +336,40 @@ class UsuarioController extends Controller
     public function cambiarEstado(Request $request, $id)
     {
         $validated = $request->validate([
-            'organizacion_id' => 'required|exists:organizaciones,id',
             'estado' => 'required|in:activo,inactivo,suspendido',
         ]);
         
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
+
+        if (Auth::id() === $id) {
+            return back()->withErrors(['error' => 'No puedes cambiar tu propio estado de cuenta.']);
+        }
         
         // Verificar permisos
         if (!$user->esAdminGlobal() && !$user->tienePermiso('cambiar-estado-usuario', $validated['organizacion_id'])) {
             abort(403, 'No tienes permiso para cambiar estados de usuario');
         }
+        $usuario = Usuario::findOrFail($id);
+        try {
+            DB::beginTransaction();
+            
+            // 2. Aplicar el cambio de estado directamente al modelo Usuario
+            $usuario->estado = $validated['estado'];
+            $usuario->save();
 
-        $vinculacion = UsuarioOrganizacionRol::where('usuario_id', $id)
-            ->where('organizacion_id', $validated['organizacion_id'])
-            ->firstOrFail();
+            // 3. Confirmar la transacción
+            DB::commit();
 
-        $vinculacion->update(['estado' => $validated['estado']]);
+            return back()->with('success', "El estado del usuario {$usuario->nombre} ha sido actualizado a '{$validated['estado']}'.");
 
-        return back()->with('success', 'Estado actualizado exitosamente');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Recomendable: Loggear el error para futuras revisiones
+            // \Log::error("Error al cambiar estado del usuario {$usuario->id}: " . $e->getMessage()); 
+            
+            return back()->withErrors(['error' => 'Ocurrió un error al intentar actualizar el estado del usuario. Intenta nuevamente.']);
+        }
     }
 
     /**
@@ -282,15 +407,9 @@ class UsuarioController extends Controller
 
         $rol = Rol::findOrFail($validated['rol_id']);
         
-        // Verificar que el rol pertenece a la organización
-        if ($rol->organizacion_id != $validated['organizacion_id']) {
-            return back()->withErrors(['error' => 'El rol no pertenece a esta organización']);
-        }
-        
         // Verificar jerarquía (excepto Admin Global)
         if (!$user->esAdminGlobal()) {
             $miRol = $user->roles()
-                ->wherePivot('organizacion_id', $validated['organizacion_id'])
                 ->first();
 
             if ($miRol && $rol->nivel_jerarquico < $miRol->nivel_jerarquico) {
