@@ -271,10 +271,10 @@
 
 **Tablas Necesarias:**
 ```sql
-- cuentas_cobro
-- items_cuenta_cobro
-- documentos_cuenta_cobro
-- historial_estados_cuenta_cobro
+- ✅ cuentas_cobro
+- ✅ items_cuenta_cobro
+- ✅ documentos_cuenta_cobro
+- ✅ historial_estados_cuenta_cobro
 ```
 
 **Controlador Necesario:**
