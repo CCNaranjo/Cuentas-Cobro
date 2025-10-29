@@ -59,6 +59,24 @@
                                 @enderror
                             </div>
 
+                            <!-- Estado del Contrato -->
+                            <div>
+                                <label for="estado" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Estado <span class="text-danger">*</span>
+                                </label>
+                                <select id="estado" 
+                                        name="estado" 
+                                        required
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus @error('estado') border-danger @enderror">
+                                    <option value="borrador" {{ old('estado', 'borrador') == 'borrador' ? 'selected' : '' }}>Borrador</option>
+                                    <option value="activo" {{ old('estado') == 'activo' ? 'selected' : '' }}>Activo</option>
+                                    <option value="suspendido" {{ old('estado') == 'suspendido' ? 'selected' : '' }}>Suspendido</option>
+                                </select>
+                                @error('estado')
+                                    <p class="mt-2 text-sm text-danger">{{ $message }}</p>
+                                @enderror
+                            </div>
+
                             <!-- Supervisor -->
                             <div>
                                 <label for="supervisor_id" class="block text-sm font-medium text-gray-700 mb-2">
@@ -78,9 +96,29 @@
                                 @error('supervisor_id')
                                     <p class="mt-2 text-sm text-danger">{{ $message }}</p>
                                 @enderror
+                            </div>
+
+                            <!-- Contratista -->
+                            <div>
+                                <label for="contratista_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Contratista
+                                </label>
+                                <select id="contratista_id" 
+                                        name="contratista_id" 
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none input-focus @error('contratista_id') border-danger @enderror">
+                                    <option value="">Seleccionar contratista...</option>
+                                    @foreach($contratistas as $contratista)
+                                    <option value="{{ $contratista->id }}" {{ old('contratista_id') == $contratista->id ? 'selected' : '' }}>
+                                        {{ $contratista->nombre }} - {{ $contratista->documento_identidad }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('contratista_id')
+                                    <p class="mt-2 text-sm text-danger">{{ $message }}</p>
+                                @enderror
                                 <p class="text-xs text-secondary mt-1">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    El contratista se asignará posteriormente
+                                    El contratista se puede asignar ahora o posteriormente
                                 </p>
                             </div>
 
