@@ -27,7 +27,8 @@ return new class extends Migration
             $table->enum('estado', [
                 'activo', 
                 'inactivo', 
-                'pendiente_verificacion'
+                'pendiente_verificacion',
+                'suspendido'
             ])->default('pendiente_verificacion');
             $table->timestamp('email_verificado_en')->nullable();
             $table->timestamp('ultimo_acceso')->nullable();

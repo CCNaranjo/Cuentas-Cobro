@@ -41,6 +41,11 @@ class VinculacionPendiente extends Model
         return $query->where('estado', 'pendiente');
     }
 
+    public function scopeActivas($query)
+    {
+        return $query->where('estado', 'activo');
+    }
+
     public function scopeNoExpiradas($query)
     {
         return $query->where(function($q) {

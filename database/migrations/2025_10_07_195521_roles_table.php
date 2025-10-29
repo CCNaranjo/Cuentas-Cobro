@@ -17,10 +17,7 @@ return new class extends Migration
             $table->text('descripcion')->nullable();
             $table->tinyInteger('nivel_jerarquico')->default(5);
             $table->boolean('es_sistema')->default(false);
-            $table->foreignId('organizacion_id')->nullable()->constrained('organizaciones')->onDelete('cascade');
             $table->timestamps();
-            
-            $table->index(['organizacion_id', 'nombre']);
         });
 
         Schema::create('usuario_organizacion_rol', function (Blueprint $table) {
@@ -30,7 +27,7 @@ return new class extends Migration
             $table->foreignId('rol_id')->constrained('roles')->onDelete('cascade');
             $table->timestamp('fecha_asignacion')->useCurrent();
             $table->foreignId('asignado_por')->nullable()->constrained('usuarios')->onDelete('set null');
-            $table->enum('estado', ['activo', 'inactivo'])->default('activo');
+            $table->enum('estado', ['activo', 'inactivo', 'suspendido'])->default('activo');
             $table->timestamps();
             
             $table->unique(['usuario_id', 'organizacion_id']);

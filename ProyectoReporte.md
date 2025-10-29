@@ -44,8 +44,8 @@
 
 **Base de Datos:**
 - ✅ Tabla `roles` (7 roles)
-- ✅ Tabla `permisos` (39 permisos)
-- ✅ Tabla `modulos` (7 módulos)
+- ✅ Tabla `permisos` (63 permisos)
+- ✅ Tabla `modulos` (8 módulos)
 - ✅ Tabla `rol_permisos` (relación many-to-many)
 - ✅ Tabla `usuario_organizacion_rol` (pivote triple)
 
@@ -56,14 +56,17 @@
 - ✅ `Usuario.php` con métodos: `tieneRol()`, `tienePermiso()`, `esAdminGlobal()`
 
 **Seeders:**
-- ✅ `ModulosSeeder` (7 módulos)
-- ✅ `PermisosSeeder` (39 permisos)
+- ✅ `ModulosSeeder` (8 módulos)
+- ✅ `PermisosSeeder` (63 permisos)
 - ✅ `RolesSeeder` (7 roles con permisos)
 - ✅ `AdminGlobalSeeder` (usuario admin inicial)
+- ✅ `AlcaldiaEjemploSeeder` (organizacion de ejemplo)
+- ✅ `AdminOrganizacionSeeder` (usuario admin de la organizacion)
 
 **Middleware:**
 - ✅ `VerificarPermiso.php`
 - ✅ `VerificarAdminGlobal.php`
+- ✅ `VerificarAccesoOrganizacion.php`
 
 **Roles Implementados:**
 1. **admin_global** (Nivel 1) - Acceso total al sistema
@@ -74,10 +77,12 @@
 6. **contratista** (Nivel 4) - Creación de cuentas de cobro
 7. **usuario_basico** (Nivel 5) - Solo visualización
 
+**Vistas**
+- ✅ Interfaz de gestión de roles (CRUD)
+- ✅ Asignación dinámica de permisos a roles
+
 ### ⏳ Pendiente
-- ⏳ Interfaz de gestión de roles (CRUD)
 - ⏳ Interfaz de gestión de permisos
-- ⏳ Asignación dinámica de permisos a roles
 - ⏳ Logs de auditoría de permisos
 
 ---
@@ -134,6 +139,9 @@
 
 **Vistas:**
 - `usuarios/pendientes.blade.php` ✅
+- `usuarios/index.blade.php` ✅
+- `usuarios/show.blade.php` ✅
+- `usuarios/edit.blade.php` ✅
 
 **Funcionalidades:**
 - ✅ Listado de usuarios por organización
@@ -142,12 +150,9 @@
 - ✅ Rechazo de vinculaciones con motivo
 - ✅ Modal de confirmación para rechazo
 - ✅ Cambio de estado de usuarios
+- ✅ Cambiar rol de usuario existente
 
 ### ⏳ Pendiente
-- `usuarios/index.blade.php` ⏳
-- `usuarios/show.blade.php` ⏳
-- `usuarios/edit.blade.php` ⏳
-- ⏳ Cambiar rol de usuario existente
 - ⏳ Ver historial de roles de un usuario
 - ⏳ Revocar acceso a organización
 - ⏳ Invitar usuario por email

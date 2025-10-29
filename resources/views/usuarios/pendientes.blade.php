@@ -20,6 +20,19 @@
                     <p class="text-secondary mt-1">Asigna roles a los usuarios que solicitaron vinculación</p>
                 </div>
 
+                <!-- DEBUG: Ver qué roles llegan -->
+                <div class="hidden"> <!-- Oculta este div o quítalo después del debug -->
+                    <h4>Roles Disponibles ({{ $roles->count() }})</h4>
+                    @foreach($roles as $rol)
+                        <p>
+                            ID: {{ $rol->id }}, 
+                            Nombre: {{ $rol->nombre }}, 
+                            Org ID: {{ $rol->organizacion_id }},
+                            Desc: {{ $rol->descripcion }}
+                        </p>
+                    @endforeach
+                </div>
+
                 <!-- Alert si hay pendientes -->
                 @if($pendientes->count() > 0)
                 <div class="bg-warning/10 border-l-4 border-warning rounded-lg p-4 mb-6">
@@ -85,7 +98,7 @@
                             @csrf
                             <input type="hidden" name="usuario_id" value="{{ $pendiente->usuario_id }}">
                             <input type="hidden" name="organizacion_id" value="{{ $pendiente->organizacion_id }}">
-
+                            
                             <div>
                                 <label for="rol_{{ $pendiente->id }}" class="block text-sm font-medium text-gray-700 mb-2">
                                     Seleccionar Rol <span class="text-danger">*</span>

@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Organizacion;
+use App\Models\Rol;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AlcaldiaEjemploSeeder extends Seeder
 {
@@ -12,22 +15,42 @@ class AlcaldiaEjemploSeeder extends Seeder
      */
     public function run(): void
     {
-        Organizacion::create([
-            'id' => 1,
-            'nombre_oficial' => 'Alcaldia Municipal de Chia',
-            'nit' => '899999172-8',
-            'departamento' => 'Cundinamarca',
-            'municipio' => 'Chia',
-            'direccion' => 'a 9-100, Cl. 11 #9-2, Chía, Cundinamarca',
-            'telefono_contacto' => '(601) 8844444',
-            'email_institucional' => 'contactenos@chia.gov.co',
-            'codigo_vinculacion' => 'ORG-2025-E52HJU',
-            'dominios_email' => ['@chia.gov.co'],
-            'logo_url' => null,
-            'estado' => 'activa',
-            'admin_global_id' => 1,
-            'created_at' => '2025-10-09 19:22:21',
-            'updated_at' => '2025-10-09 19:22:21',
-        ]);
+        DB::transaction(function () {
+            $organizaciones = [
+                [
+                    'nombre_oficial' => 'Alcaldía Municipal de Chía',
+                    'nit' => '899999001',
+                    'departamento' => 'Cundinamarca',
+                    'municipio' => 'Chía',
+                    'direccion' => 'Calle 13 # 12-00, Centro',
+                    'telefono_contacto' => '+57 1 8630000',
+                    'email_institucional' => 'contacto@chia.gov.co',
+                    'codigo_vinculacion' => $this->generarCodigoVinculacion(),
+                    'admin_global_id' => 1,
+                    'estado' => 'activa',
+                    'dominios_email' => ['@chia.gov.co'],
+                ]
+            ];
+
+            foreach ($organizaciones as $orgData) {
+                    $organizacion = Organizacion::firstOrCreate(
+                        ['nit' => $orgData['nit']],
+                        $orgData
+                    );
+
+                    $this->command->info("🏢 Organización creada: {$organizacion->nombre_oficial}");
+                }
+        });
+    }
+    /**
+     * Generar código de vinculación único
+     */
+    private function generarCodigoVinculacion()
+    {
+        do {
+            $codigo = 'ORG-' . date('Y') . '-CHIA' . rand(100, 999);
+        } while (Organizacion::where('codigo_vinculacion', $codigo)->exists());
+
+        return $codigo;
     }
 }

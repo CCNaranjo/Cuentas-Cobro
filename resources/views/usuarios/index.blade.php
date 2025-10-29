@@ -33,7 +33,7 @@
                                 type="button"
                                 role="tab">
                             <i class="bi bi-check-circle mr-2"></i>
-                            Activos ({{ $usuarios->where('pivot.estado', 'activo')->count() }})
+                            Activos ({{ $usuarios->where('estado', 'activo')->count() }})
                         </button>
                         <button class="tab-button pb-3 border-b-2 border-transparent text-gray-600 hover:text-blue-900 transition-colors"
                                 data-tab="inactivos"
@@ -106,7 +106,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
-                                    @forelse($usuarios->where('pivot.estado', 'activo') as $usuario)
+                                    @forelse($usuarios->where('estado', 'activo') as $usuario)
                                     <tr class="hover:bg-gray-50 transition-colors">
                                         <td class="px-6 py-4">
                                             <div class="flex items-center">
@@ -152,7 +152,7 @@
                                             {{ $usuario->telefono ?? '-' }}
                                         </td>
                                         <td class="px-6 py-4 text-center text-gray-500 text-sm">
-                                            {{ $usuario->pivot->fecha_asignacion ? \Carbon\Carbon::parse($usuario->pivot->fecha_asignacion)->format('d/m/Y') : '-' }}
+                                            {{ $usuario->fecha_asignacion ? \Carbon\Carbon::parse($usuario->fecha_asignacion)->format('d/m/Y') : '-' }}
                                         </td>
                                         <td class="px-6 py-4 text-center">
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -164,8 +164,15 @@
                                                 <a href="{{ route('usuarios.show', $usuario->id) }}" 
                                                 class="inline-flex items-center p-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
                                                 title="Ver perfil">
-                                                    <i class="bi bi-eye"></i>
+                                                    <i class="fas fa-eye"></i>
                                                 </a>
+                                                @if(auth()->user()->tienePermiso('editar-usuario', $organizacion->id))
+                                                <a href="{{ route('usuarios.edit', $usuario->id) }}" 
+                                                class="inline-flex items-center p-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                                                title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                @endif
                                                 
                                                 @if(auth()->user()->tienePermiso('editar-usuario', $organizacion->id))
                                                 <button onclick="openEditRolModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $rolUsuario ? $rolUsuario->id : null }}')" 
@@ -176,7 +183,7 @@
                                                 @endif
 
                                                 @if(auth()->user()->tienePermiso('cambiar-estado-usuario', $organizacion->id))
-                                                <button onclick="openEstadoModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $usuario->pivot->estado }}')" 
+                                                <button onclick="openEstadoModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $usuario->estado }}')" 
                                                         class="inline-flex items-center p-2 border border-gray-300 rounded-lg text-yellow-600 hover:bg-yellow-50 transition-colors"
                                                         title="Cambiar estado">
                                                     <i class="bi bi-toggle-on"></i>
@@ -212,7 +219,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200">
-                                    @forelse($usuarios->where('pivot.estado', '!=', 'activo') as $usuario)
+                                    @forelse($usuarios->where('estado', '!=', 'activo') as $usuario)
                                     <tr class="opacity-70 hover:opacity-100 transition-opacity">
                                         <td class="px-6 py-4">
                                             <div class="flex items-center">
@@ -241,7 +248,7 @@
                                             {{ $usuario->documento_identidad ?? '-' }}
                                         </td>
                                         <td class="px-6 py-4 text-center">
-                                            @if($usuario->pivot->estado == 'suspendido')
+                                            @if($usuario->estado == 'suspendido')
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                                     <i class="bi bi-pause-circle-fill mr-1"></i>Suspendido
                                                 </span>
@@ -253,7 +260,7 @@
                                         </td>
                                         <td class="px-6 py-4 text-right">
                                             @if(auth()->user()->tienePermiso('cambiar-estado-usuario', $organizacion->id))
-                                            <button onclick="openEstadoModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $usuario->pivot->estado }}')" 
+                                            <button onclick="openEstadoModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $usuario->estado }}')" 
                                                     class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
                                                     title="Reactivar usuario">
                                                 <i class="bi bi-arrow-clockwise mr-1"></i>Reactivar
@@ -299,7 +306,7 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
-            <form id="formCambiarRol" method="POST">
+            <form id="formCambiarRol" method="POST" action="{{ route('usuarios.cambiar-rol', $usuario->id) }}">
                 @csrf
                 <input type="hidden" name="organizacion_id" value="{{ $organizacion->id }}">
                 
@@ -354,10 +361,8 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
-            <form id="formCambiarEstado" method="POST">
-                @csrf
-                <input type="hidden" name="organizacion_id" value="{{ $organizacion->id }}">
-                
+            <form id="formCambiarEstado" method="POST" action="{{ route('usuarios.cambiar-estado', $usuario->id) }}">
+                @csrf                
                 <div class="modal-body p-6">
                     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-4">
                         <div class="flex">
