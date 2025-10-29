@@ -11,6 +11,8 @@ use App\Http\Middleware\VerificarPermiso;
 use App\Http\Middleware\VerificarAccesoOrganizacion;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RolesController;
+use App\Http\Controllers\CuentaCobroController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -203,4 +205,21 @@ Route::middleware(['auth'])->group(function () {
 // Ruta de bienvenida (opcional)
 Route::get('/welcome', function () {
     return view('welcome');
+});
+
+// Rutas para la gestión de cuentas de cobro
+Route::middleware(['auth'])->group(function () {
+    
+    // CRUD completo
+    Route::resource('cuentas-cobro', CuentaCobroController::class);
+    
+    // Rutas adicionales
+    Route::post('cuentas-cobro/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
+        ->name('cuentas-cobro.cambiar-estado');
+    
+    Route::post('cuentas-cobro/{id}/documentos', [CuentaCobroController::class, 'subirDocumento'])
+        ->name('cuentas-cobro.subir-documento');
+    
+    Route::delete('cuentas-cobro/{id}/documentos/{documentoId}', [CuentaCobroController::class, 'eliminarDocumento'])
+        ->name('cuentas-cobro.eliminar-documento');
 });

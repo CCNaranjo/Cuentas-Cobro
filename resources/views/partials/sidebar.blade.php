@@ -58,9 +58,9 @@
             <!-- Roles y permisos (Solo Admin Global) -->
             @if(auth()->user()->esAdminGlobal())
             <a href="{{ route('roles.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('organizaciones.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('organizaciones.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-building text-lg"></i>
+               class="sidebar-link group {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('roles.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                <i class="fas fa-user-shield text-lg"></i>
                 <span>Roles</span>
             </a>
             @endif
@@ -76,16 +76,17 @@
             </a>
             @endif
 
-            <!-- Cuentas de Cobro (Placeholder para futuro) -->
+            <!-- ✅ Cuentas de Cobro - AHORA ACTIVO -->
             @if(auth()->user()->tienePermiso('ver-todas-cuentas', session('organizacion_actual')) || 
                 auth()->user()->tienePermiso('ver-mis-cuentas', session('organizacion_actual')))
-            <a href="#" 
-               class="sidebar-link group opacity-50 cursor-not-allowed" 
-               title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+            <a href="{{ route('cuentas-cobro.index') }}" 
+               class="sidebar-link group {{ request()->routeIs('cuentas-cobro.*') ? 'active' : '' }}">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('cuentas-cobro.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
                 <i class="fas fa-file-invoice-dollar text-lg"></i>
                 <span>Cuentas de Cobro</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-2 py-0.5 rounded">Próximo</span>
+                @if(request()->routeIs('cuentas-cobro.*'))
+                    <span class="ml-auto text-xs bg-accent text-white px-2 py-0.5 rounded">Activo</span>
+                @endif
             </a>
             @endif
         </div>
