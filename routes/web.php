@@ -144,11 +144,16 @@ Route::middleware(['auth'])->group(function () {
                 ->name('contratos.vincular-contratista');
 
             // Rutas CRUD básicas
-            Route::get('/', [ContratoController::class, 'index'])->name('contratos.index');
+            Route::get('/', [ContratoController::class, 'index'])
+                ->name('contratos.index');
+
             Route::post('/', [ContratoController::class, 'store'])
                 ->middleware('verificar.permiso:crear-contrato')
                 ->name('contratos.store');
-            Route::get('/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
+
+            Route::get('/{contrato}', [ContratoController::class, 'show'])
+                ->name('contratos.show');
+                
             Route::put('/{contrato}', [ContratoController::class, 'update'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.update');
