@@ -204,7 +204,6 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/password', [UsuarioController::class, 'cambiarPassword'])->name('perfil.password');
     });
 });
-<<<<<<< HEAD
 
 // Ruta de bienvenida (opcional)
 Route::get('/welcome', function () {
@@ -227,5 +226,3 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('cuentas-cobro/{id}/documentos/{documentoId}', [CuentaCobroController::class, 'eliminarDocumento'])
         ->name('cuentas-cobro.eliminar-documento');
 });
-=======
->>>>>>> 9c8ffda1d6d5dcdbd980a822703ffa8b76e0aa69
