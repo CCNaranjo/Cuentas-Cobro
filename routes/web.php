@@ -11,7 +11,6 @@ use App\Http\Middleware\VerificarPermiso;
 use App\Http\Middleware\VerificarAccesoOrganizacion;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RolesController;
-use App\Http\Controllers\InvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,38 +60,6 @@ Route::middleware(['auth'])->group(function () {
         session(['organizacion_actual' => $id]);
         return redirect()->route('dashboard')->with('success', 'Organización cambiada exitosamente');
     })->name('cambiar-organizacion');
-
-    
-
-    /*
-    |--------------------------------------------------------------------------
-    | Web Routes
-    |--------------------------------------------------------------------------
-    */
-
-// Ruta de inicio
-
-
-Route::get('/', function () {
-    return view('welcome');
-});
-
-// ⬇️ COMENTA ESTA LÍNEA (línea 73)
-// Auth::routes();
-
-// También comenta esta si existe:
-// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-
-// Rutas de Cuentas de Cobro
-
-
-Route::resource('invoices', InvoiceController::class);
-Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])
-    ->name('invoices.status');
-
-
-
-
 
     // ============================================
     // ADMIN GLOBAL - Organizaciones
@@ -237,6 +204,3 @@ Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatu
 Route::get('/welcome', function () {
     return view('welcome');
 });
-Auth::routes();
-
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
