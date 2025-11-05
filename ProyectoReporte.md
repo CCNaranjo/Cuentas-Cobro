@@ -194,7 +194,6 @@
 - `contratos/show.blade.php` ⏳
 - `contratos/edit.blade.php` ⏳
 - ⏳ Cambiar supervisor de contrato
-- ⏳ Historial de modificaciones
 - ⏳ Documentos del contrato
 - ⏳ Gráfico de ejecución financiera
 - ⏳ Liquidación de contrato
@@ -271,10 +270,10 @@
 
 **Tablas Necesarias:**
 ```sql
-- cuentas_cobro
-- items_cuenta_cobro
-- documentos_cuenta_cobro
-- historial_estados_cuenta_cobro
+- ✅ cuentas_cobro
+- ✅ items_cuenta_cobro
+- ✅ documentos_cuenta_cobro
+- ✅ historial_estados_cuenta_cobro
 ```
 
 **Controlador Necesario:**

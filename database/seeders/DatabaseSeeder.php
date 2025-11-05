@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -21,6 +19,8 @@ class DatabaseSeeder extends Seeder
             AdminGlobalSeeder::class,
             AlcaldiaEjemploSeeder::class,
             AdminOrganizacionSeeder::class,
+            ContratoSeeder::class,
+            CuentaCobroSeeder::class,
             ParametrosSistemaSeeder::class,
             OrganizacionConfiguracionSeeder::class
         ]);

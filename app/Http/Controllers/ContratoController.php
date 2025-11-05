@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Contrato;
 use App\Models\Usuario;
 use App\Models\Organizacion;
+use App\Models\ContratoArchivo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ContratoController extends Controller
 {
@@ -17,23 +20,35 @@ class ContratoController extends Controller
     {
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
         $user = Auth::user();
-        dd(get_class($user));
 
-        $query = Contrato::with(['organizacion', 'contratista', 'supervisor']);
+        $query = Contrato::with(['organizacion', 'contratista', 'supervisor'])
+            ->where('organizacion_id', $organizacionId);
 
-        // Filtrar según rol
-        if ($user->tienePermiso('ver-todos-contratos', $organizacionId)) {
-            $query->where('organizacion_id', $organizacionId);
-        } elseif ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
-            $query->where(function($q) use ($user) {
-                $q->where('contratista_id', $user->id)
-                  ->orWhere('supervisor_id', $user->id);
-            });
-        } else {
-            abort(403, 'No tienes permiso para ver contratos');
+        // Filtrar según rol y permisos
+        if (!$user->tienePermiso('ver-todos-contratos', $organizacionId)) {
+            if ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('contratista_id', $user->id)
+                        ->orWhere('supervisor_id', $user->id);
+                });
+            } else {
+                abort(403, 'No tienes permiso para ver contratos');
+            }
         }
 
         // Filtros adicionales
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('numero_contrato', 'LIKE', "%{$search}%")
+                    ->orWhere('objeto_contractual', 'LIKE', "%{$search}%")
+                    ->orWhereHas('contratista', function ($q2) use ($search) {
+                        $q2->where('nombre', 'LIKE', "%{$search}%")
+                            ->orWhere('email', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
@@ -47,8 +62,13 @@ class ContratoController extends Controller
         $organizacion = Organizacion::find($organizacionId);
 
         // Contratistas y supervisores para filtros
-        $contratistas = Usuario::whereHas('contratosComoContratista')->get();
-        $supervisores = Usuario::whereHas('contratosComoSupervisor')->get();
+        $contratistas = Usuario::whereHas('contratosComoContratista', function ($q) use ($organizacionId) {
+            $q->where('organizacion_id', $organizacionId);
+        })->get();
+
+        $supervisores = Usuario::whereHas('contratosComoSupervisor', function ($q) use ($organizacionId) {
+            $q->where('organizacion_id', $organizacionId);
+        })->get();
 
         return view('contratos.index', compact('contratos', 'organizacion', 'contratistas', 'supervisores'));
     }
@@ -61,15 +81,11 @@ class ContratoController extends Controller
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
         $organizacion = Organizacion::findOrFail($organizacionId);
 
-        // Obtener supervisores de la organización
-        $supervisores = Usuario::whereHas('roles', function($query) use ($organizacionId) {
-                $query->where('nombre', 'supervisor')
-                      ->wherePivot('organizacion_id', $organizacionId)
-                      ->wherePivot('estado', 'activo');
-            })
-            ->get();
+        // Obtener supervisores y contratistas
+        $supervisores = Usuario::where('estado', 'activo')->get();
+        $contratistas = Usuario::where('estado', 'activo')->get();
 
-        return view('contratos.create', compact('organizacion', 'supervisores'));
+        return view('contratos.create', compact('organizacion', 'supervisores', 'contratistas'));
     }
 
     /**
@@ -81,21 +97,86 @@ class ContratoController extends Controller
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato',
             'organizacion_id' => 'required|exists:organizaciones,id',
             'supervisor_id' => 'required|exists:usuarios,id',
-            'objeto_contractual' => 'required|string',
+            'contratista_id' => 'nullable|exists:usuarios,id',
+            'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'porcentaje_retencion_fuente' => 'required|numeric|min:0|max:100',
             'porcentaje_estampilla' => 'required|numeric|min:0|max:100',
+            'estado' => 'required|in:borrador,activo,suspendido',
         ]);
 
-        $validated['estado'] = 'borrador';
-        $validated['vinculado_por'] = Auth::user()->id;
+        $validated['vinculado_por'] = Auth::id();
 
-        $contrato = Contrato::create($validated);
+        // Si se asigna contratista, cambiar estado a activo
+        if (!empty($validated['contratista_id']) && $validated['estado'] == 'borrador') {
+            $validated['estado'] = 'activo';
+        }
 
-        return redirect()->route('contratos.show', $contrato)
-            ->with('success', 'Contrato creado exitosamente. Ahora puedes vincular un contratista.');
+        DB::beginTransaction();
+        try {
+            // Crear el contrato
+            $contrato = Contrato::create($validated);
+
+            // Manejar archivos si existen
+            if ($request->has('archivos')) {
+                $archivos = $request->input('archivos');
+
+                foreach ($archivos as $index => $archivoData) {
+                    if ($request->hasFile("archivos.{$index}.archivo")) {
+                        $archivo = $request->file("archivos.{$index}.archivo");
+                        $tipoDocumento = $archivoData['tipo_documento'] ?? 'otro';
+                        $descripcion = $archivoData['descripcion'] ?? null;
+
+                        // Validar el archivo
+                        $archivoValidado = $request->validate([
+                            "archivos.{$index}.archivo" => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
+                        ]);
+
+                        // Generar nombre único para el archivo
+                        $nombreOriginal = $archivo->getClientOriginalName();
+                        $extension = $archivo->getClientOriginalExtension();
+                        $nombreArchivo = $contrato->numero_contrato . '_' .
+                            $tipoDocumento . '_' .
+                            time() . '_' . $index . '.' . $extension;
+
+                        // Definir ruta en el servidor FTP
+                        $ruta = 'contratos/' . $contrato->organizacion_id . '/' . $nombreArchivo;
+
+                        // Subir archivo al servidor FTP
+                        $contenido = file_get_contents($archivo->getRealPath());
+                        Storage::disk('ftp')->put($ruta, $contenido);
+
+                        // Guardar registro en la base de datos
+                        ContratoArchivo::create([
+                            'contrato_id' => $contrato->id,
+                            'subido_por' => Auth::id(),
+                            'nombre_original' => $nombreOriginal,
+                            'nombre_archivo' => $nombreArchivo,
+                            'ruta' => $ruta,
+                            'tipo_archivo' => $extension,
+                            'mime_type' => $archivo->getMimeType(),
+                            'tamaño' => $archivo->getSize(),
+                            'tipo_documento' => $tipoDocumento,
+                            'descripcion' => $descripcion,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('contratos.show', $contrato)
+                ->with('success', 'Contrato creado exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al crear contrato: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return back()->with('error', 'Error al crear el contrato: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**
@@ -108,17 +189,21 @@ class ContratoController extends Controller
         // Verificar permisos
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        if (!$user->tienePermiso('ver-todos-contratos', $contrato->organizacion_id) &&
+        $organizacionId = $contrato->organizacion_id;
+
+        if (
+            !$user->tienePermiso('ver-todos-contratos', $organizacionId) &&
             $contrato->contratista_id != $user->id &&
-            $contrato->supervisor_id != $user->id) {
+            $contrato->supervisor_id != $user->id
+        ) {
             abort(403, 'No tienes acceso a este contrato');
         }
 
-        // Calcular estadísticas (cuando se implemente cuentas de cobro)
+        // Calcular estadísticas
         $estadisticas = [
-            'valor_cobrado' => 0, // $contrato->valorCobrado(),
-            'valor_disponible' => $contrato->valor_total, // $contrato->valorDisponible(),
-            'porcentaje_ejecucion' => 0, // $contrato->porcentajeEjecucion(),
+            'valor_cobrado' => 0, // Por implementar cuando tengas cuentas de cobro
+            'valor_disponible' => $contrato->valor_total,
+            'porcentaje_ejecucion' => 0,
         ];
 
         return view('contratos.show', compact('contrato', 'estadisticas'));
@@ -129,19 +214,19 @@ class ContratoController extends Controller
      */
     public function edit(Contrato $contrato)
     {
-        // Solo editable en estado borrador
-        if ($contrato->estado != 'borrador') {
-            return back()->withErrors(['error' => 'Solo se pueden editar contratos en borrador']);
+        // Verificar permisos de edición
+        $user = Auth::user();
+        $organizacionId = $contrato->organizacion_id;
+
+        if (!$user->tienePermiso('editar-contrato', $organizacionId)) {
+            abort(403, 'No tienes permiso para editar contratos');
         }
 
-        $supervisores = Usuario::whereHas('roles', function($query) use ($contrato) {
-                $query->where('nombre', 'supervisor')
-                      ->wherePivot('organizacion_id', $contrato->organizacion_id)
-                      ->wherePivot('estado', 'activo');
-            })
-            ->get();
+        // Obtener supervisores y contratistas
+        $supervisores = Usuario::where('estado', 'activo')->get();
+        $contratistas = Usuario::where('estado', 'activo')->get();
 
-        return view('contratos.edit', compact('contrato', 'supervisores'));
+        return view('contratos.edit', compact('contrato', 'supervisores', 'contratistas'));
     }
 
     /**
@@ -149,19 +234,17 @@ class ContratoController extends Controller
      */
     public function update(Request $request, Contrato $contrato)
     {
-        if ($contrato->estado != 'borrador') {
-            return back()->withErrors(['error' => 'Solo se pueden editar contratos en borrador']);
-        }
-
         $validated = $request->validate([
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato,' . $contrato->id,
             'supervisor_id' => 'required|exists:usuarios,id',
-            'objeto_contractual' => 'required|string',
+            'contratista_id' => 'nullable|exists:usuarios,id',
+            'objeto_contractual' => 'required|string|max:1000',
             'valor_total' => 'required|numeric|min:0',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'porcentaje_retencion_fuente' => 'required|numeric|min:0|max:100',
             'porcentaje_estampilla' => 'required|numeric|min:0|max:100',
+            'estado' => 'required|in:borrador,activo,terminado,suspendido',
         ]);
 
         $contrato->update($validated);
@@ -181,7 +264,7 @@ class ContratoController extends Controller
 
         // Verificar que el contrato no tenga contratista
         if ($contrato->contratista_id) {
-            return back()->withErrors(['error' => 'Este contrato ya tiene un contratista asignado']);
+            return back()->with('error', 'Este contrato ya tiene un contratista asignado');
         }
 
         $contratista = Usuario::findOrFail($validated['contratista_id']);
@@ -191,11 +274,6 @@ class ContratoController extends Controller
             'contratista_id' => $validated['contratista_id'],
             'estado' => 'activo',
         ]);
-
-        // Actualizar tipo de vinculación del usuario
-        if ($contratista->tipo_vinculacion != 'contratista') {
-            $contratista->update(['tipo_vinculacion' => 'contratista']);
-        }
 
         return back()->with('success', 'Contratista vinculado exitosamente');
     }
@@ -207,13 +285,12 @@ class ContratoController extends Controller
     {
         $search = $request->input('q');
 
-        $usuarios = Usuario::where(function($query) use ($search) {
-                $query->where('nombre', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%")
-                      ->orWhere('documento_identidad', 'LIKE', "%{$search}%");
-            })
+        $usuarios = Usuario::where(function ($query) use ($search) {
+            $query->where('nombre', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%")
+                ->orWhere('documento_identidad', 'LIKE', "%{$search}%");
+        })
             ->where('estado', 'activo')
-            ->whereIn('tipo_vinculacion', ['contratista', 'sin_vinculacion'])
             ->limit(10)
             ->get(['id', 'nombre', 'email', 'documento_identidad']);
 
@@ -231,9 +308,6 @@ class ContratoController extends Controller
 
         // Verificar que el nuevo supervisor tiene el rol correcto
         $supervisor = Usuario::findOrFail($validated['supervisor_id']);
-        if (!$supervisor->tieneRol('supervisor', $contrato->organizacion_id)) {
-            return back()->withErrors(['error' => 'El usuario seleccionado no es supervisor']);
-        }
 
         $contrato->update(['supervisor_id' => $validated['supervisor_id']]);
 
@@ -252,9 +326,115 @@ class ContratoController extends Controller
 
         $contrato->update(['estado' => $validated['estado']]);
 
-        // TODO: Registrar en historial
-        // TODO: Notificar a las partes involucradas
+        // Aquí puedes agregar lógica para registrar en historial o notificar
 
-        return back()->with('success', 'Estado del contrato actualizado');
+        return back()->with('success', 'Estado del contrato actualizado exitosamente');
+    }
+
+    /**
+     * Subir archivo del contrato
+     */
+    public function subirArchivo(Request $request, Contrato $contrato)
+    {
+        $validated = $request->validate([
+            'archivo' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240', // Max 10MB
+            'tipo_documento' => 'required|in:contrato_firmado,adicion,suspension,acta_inicio,acta_liquidacion,otro',
+            'descripcion' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $archivo = $request->file('archivo');
+
+            // Generar nombre único para el archivo
+            $nombreOriginal = $archivo->getClientOriginalName();
+            $extension = $archivo->getClientOriginalExtension();
+            $nombreArchivo = $contrato->numero_contrato . '_' .
+                $validated['tipo_documento'] . '_' .
+                time() . '.' . $extension;
+
+            // Definir ruta en el servidor FTP
+            $ruta = 'contratos/' . $contrato->organizacion_id . '/' . $nombreArchivo;
+
+            // Subir archivo al servidor FTP
+            $contenido = file_get_contents($archivo->getRealPath());
+            Storage::disk('ftp')->put($ruta, $contenido);
+
+            // Guardar registro en la base de datos
+            $contratoArchivo = ContratoArchivo::create([
+                'contrato_id' => $contrato->id,
+                'subido_por' => Auth::id(),
+                'nombre_original' => $nombreOriginal,
+                'nombre_archivo' => $nombreArchivo,
+                'ruta' => $ruta,
+                'tipo_archivo' => $extension,
+                'mime_type' => $archivo->getMimeType(),
+                'tamaño' => $archivo->getSize(),
+                'tipo_documento' => $validated['tipo_documento'],
+                'descripcion' => $validated['descripcion'] ?? null,
+            ]);
+
+            return back()->with('success', 'Archivo subido exitosamente');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Descargar archivo del contrato
+     */
+    public function descargarArchivo(ContratoArchivo $archivo)
+    {
+        try {
+            // Verificar permisos
+            $user = Auth::user();
+            $contrato = $archivo->contrato;
+
+            if (
+                !$user->tienePermiso('ver-todos-contratos', $contrato->organizacion_id) &&
+                $contrato->contratista_id != $user->id &&
+                $contrato->supervisor_id != $user->id
+            ) {
+                abort(403, 'No tienes permiso para descargar este archivo');
+            }
+
+            // Descargar del servidor FTP
+            if (!Storage::disk('ftp')->exists($archivo->ruta)) {
+                return back()->with('error', 'El archivo no existe en el servidor');
+            }
+
+            $contenido = Storage::disk('ftp')->get($archivo->ruta);
+
+            return response($contenido)
+                ->header('Content-Type', $archivo->mime_type)
+                ->header('Content-Disposition', 'attachment; filename="' . $archivo->nombre_original . '"');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al descargar el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Eliminar archivo del contrato
+     */
+    public function eliminarArchivo(ContratoArchivo $archivo)
+    {
+        try {
+            // Verificar permisos
+            $user = Auth::user();
+            $contrato = $archivo->contrato;
+
+            if (!$user->tienePermiso('eliminar-archivo-contrato', $contrato->organizacion_id)) {
+                abort(403, 'No tienes permiso para eliminar archivos');
+            }
+
+            // Eliminar (el modelo se encarga de eliminar del FTP mediante el evento boot)
+            $archivo->delete();
+
+            return back()->with('success', 'Archivo eliminado exitosamente');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al eliminar el archivo: ' . $e->getMessage());
+        }
     }
 }

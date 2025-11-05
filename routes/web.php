@@ -12,6 +12,13 @@ use App\Http\Middleware\VerificarPermiso;
 use App\Http\Middleware\VerificarAccesoOrganizacion;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RolesController;
+use App\Http\Controllers\CuentaCobroController;
+
+
+// REGISTRO MANUAL DE MIDDLEWERS - SOLUCIÓN TEMPORAL
+app('router')->aliasMiddleware('verificar.permiso', VerificarPermiso::class);
+app('router')->aliasMiddleware('verificar.acceso.organizacion', VerificarAccesoOrganizacion::class);
+app('router')->aliasMiddleware('verificar.admin.global', VerificarAdminGlobal::class);
 
 /*
 |--------------------------------------------------------------------------
@@ -33,7 +40,7 @@ Route::get('/verify-email/{token}', [AuthController::class, 'verifyEmail'])
 
 // Rutas protegidas
 Route::middleware(['auth'])->group(function () {
-    
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
@@ -45,19 +52,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cambiar-organizacion/{id}', function ($id) {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         // Verificar acceso a la organización
         if (!$user->esAdminGlobal()) {
             $tieneAcceso = $user->organizacionesVinculadas()
                 ->where('organizacion_id', $id)
                 ->wherePivot('estado', 'activo')
                 ->exists();
-                
+
             if (!$tieneAcceso) {
                 return redirect()->back()->with('error', 'No tienes acceso a esta organización');
             }
         }
-        
+
         session(['organizacion_actual' => $id]);
         return redirect()->route('dashboard')->with('success', 'Organización cambiada exitosamente');
     })->name('cambiar-organizacion');
@@ -94,9 +101,8 @@ Route::middleware(['auth'])->group(function () {
 
     // ============================================
     // GESTIÓN DE USUARIOS
-    // Requiere: verificar acceso a organización + permiso ver-usuarios
     // ============================================
-    Route::middleware([VerificarAccesoOrganizacion::class, VerificarPermiso::class . ':ver-usuarios'])
+    Route::middleware([VerificarAccesoOrganizacion::class, 'verificar.permiso:ver-usuarios'])
         ->prefix('usuarios')
         ->group(function () {
             Route::get('/', [UsuarioController::class, 'index'])
@@ -163,48 +169,68 @@ Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
 
     // ============================================
     // CONTRATOS
-    // Requiere: verificar acceso a organización
     // ============================================
-    Route::middleware([VerificarAccesoOrganizacion::class])
+    Route::middleware(['verificar.acceso.organizacion'])
         ->prefix('contratos')
         ->group(function () {
-            Route::get('/', [ContratoController::class, 'index'])
-                ->name('contratos.index');
-            
-            Route::get('/create', [ContratoController::class, 'create'])
+            // Rutas específicas primero
+            Route::get('/crear', [ContratoController::class, 'create'])
                 ->middleware('verificar.permiso:crear-contrato')
                 ->name('contratos.create');
-            
-            Route::post('/', [ContratoController::class, 'store'])
-                ->middleware('verificar.permiso:crear-contrato')
-                ->name('contratos.store');
-            
-            Route::get('/{contrato}', [ContratoController::class, 'show'])
-                ->name('contratos.show');
-            
-            Route::get('/{contrato}/edit', [ContratoController::class, 'edit'])
+
+            Route::get('/buscar/contratista', [ContratoController::class, 'buscarContratista'])
+                ->name('contratos.buscar-contratista');
+
+            // ============================================
+            // ARCHIVOS DE CONTRATOS - NUEVAS RUTAS
+            // ============================================
+            Route::prefix('archivos')->group(function () {
+                // Descargar archivo (debe ir antes de la ruta con {archivo})
+                Route::get('/{archivo}/descargar', [ContratoController::class, 'descargarArchivo'])
+                    ->name('contratos.archivos.descargar');
+                
+                // Eliminar archivo
+                Route::delete('/{archivo}', [ContratoController::class, 'eliminarArchivo'])
+                    ->middleware('verificar.permiso:eliminar-archivo-contrato')
+                    ->name('contratos.archivos.eliminar');
+            });
+
+            // Subir archivo a un contrato específico
+            Route::post('/{contrato}/archivos', [ContratoController::class, 'subirArchivo'])
+                ->middleware('verificar.permiso:subir-archivo-contrato')
+                ->name('contratos.archivos.subir');
+
+            // Rutas con ID específicas
+            Route::get('/{contrato}/editar', [ContratoController::class, 'edit'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.edit');
-            
-            Route::put('/{contrato}', [ContratoController::class, 'update'])
-                ->middleware('verificar.permiso:editar-contrato')
-                ->name('contratos.update');
-            
-            Route::post('/{contrato}/vincular-contratista', [ContratoController::class, 'vincularContratista'])
-                ->middleware('verificar.permiso:vincular-contratista')
-                ->name('contratos.vincular-contratista');
-            
+
             Route::put('/{contrato}/cambiar-supervisor', [ContratoController::class, 'cambiarSupervisor'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.cambiar-supervisor');
-            
+
             Route::put('/{contrato}/cambiar-estado', [ContratoController::class, 'cambiarEstado'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.cambiar-estado');
-            
-            // API para búsqueda de contratistas
-            Route::get('/buscar/contratista', [ContratoController::class, 'buscarContratista'])
-                ->name('contratos.buscar-contratista');
+
+            Route::post('/{contrato}/vincular-contratista', [ContratoController::class, 'vincularContratista'])
+                ->middleware('verificar.permiso:vincular-contratista')
+                ->name('contratos.vincular-contratista');
+
+            // Rutas CRUD básicas
+            Route::get('/', [ContratoController::class, 'index'])
+                ->name('contratos.index');
+
+            Route::post('/', [ContratoController::class, 'store'])
+                ->middleware('verificar.permiso:crear-contrato')
+                ->name('contratos.store');
+
+            Route::get('/{contrato}', [ContratoController::class, 'show'])
+                ->name('contratos.show');
+                
+            Route::put('/{contrato}', [ContratoController::class, 'update'])
+                ->middleware('verificar.permiso:editar-contrato')
+                ->name('contratos.update');
         });
 
     // ========== RUTAS DE CONFIGURACIÓN ==========
@@ -251,4 +277,21 @@ Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
 // Ruta de bienvenida (opcional)
 Route::get('/welcome', function () {
     return view('welcome');
+});
+
+// Rutas para la gestión de cuentas de cobro
+Route::middleware(['auth'])->group(function () {
+    
+    // CRUD completo
+    Route::resource('cuentas-cobro', CuentaCobroController::class);
+    
+    // Rutas adicionales
+    Route::post('cuentas-cobro/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
+        ->name('cuentas-cobro.cambiar-estado');
+    
+    Route::post('cuentas-cobro/{id}/documentos', [CuentaCobroController::class, 'subirDocumento'])
+        ->name('cuentas-cobro.subir-documento');
+    
+    Route::delete('cuentas-cobro/{id}/documentos/{documentoId}', [CuentaCobroController::class, 'eliminarDocumento'])
+        ->name('cuentas-cobro.eliminar-documento');
 });
