@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Contrato;
 use App\Models\Usuario;
 use App\Models\Organizacion;
+use App\Models\ContratoArchivo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ContratoController extends Controller
 {
@@ -112,10 +114,69 @@ class ContratoController extends Controller
             $validated['estado'] = 'activo';
         }
 
-        $contrato = Contrato::create($validated);
+        DB::beginTransaction();
+        try {
+            // Crear el contrato
+            $contrato = Contrato::create($validated);
 
-        return redirect()->route('contratos.show', $contrato)
-            ->with('success', 'Contrato creado exitosamente.');
+            // Manejar archivos si existen
+            if ($request->has('archivos')) {
+                $archivos = $request->input('archivos');
+
+                foreach ($archivos as $index => $archivoData) {
+                    if ($request->hasFile("archivos.{$index}.archivo")) {
+                        $archivo = $request->file("archivos.{$index}.archivo");
+                        $tipoDocumento = $archivoData['tipo_documento'] ?? 'otro';
+                        $descripcion = $archivoData['descripcion'] ?? null;
+
+                        // Validar el archivo
+                        $archivoValidado = $request->validate([
+                            "archivos.{$index}.archivo" => 'file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
+                        ]);
+
+                        // Generar nombre único para el archivo
+                        $nombreOriginal = $archivo->getClientOriginalName();
+                        $extension = $archivo->getClientOriginalExtension();
+                        $nombreArchivo = $contrato->numero_contrato . '_' .
+                            $tipoDocumento . '_' .
+                            time() . '_' . $index . '.' . $extension;
+
+                        // Definir ruta en el servidor FTP
+                        $ruta = 'contratos/' . $contrato->organizacion_id . '/' . $nombreArchivo;
+
+                        // Subir archivo al servidor FTP
+                        $contenido = file_get_contents($archivo->getRealPath());
+                        Storage::disk('ftp')->put($ruta, $contenido);
+
+                        // Guardar registro en la base de datos
+                        ContratoArchivo::create([
+                            'contrato_id' => $contrato->id,
+                            'subido_por' => Auth::id(),
+                            'nombre_original' => $nombreOriginal,
+                            'nombre_archivo' => $nombreArchivo,
+                            'ruta' => $ruta,
+                            'tipo_archivo' => $extension,
+                            'mime_type' => $archivo->getMimeType(),
+                            'tamaño' => $archivo->getSize(),
+                            'tipo_documento' => $tipoDocumento,
+                            'descripcion' => $descripcion,
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('contratos.show', $contrato)
+                ->with('success', 'Contrato creado exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al crear contrato: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return back()->with('error', 'Error al crear el contrato: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**
@@ -153,9 +214,12 @@ class ContratoController extends Controller
      */
     public function edit(Contrato $contrato)
     {
-        // Solo editable en estado borrador
-        if ($contrato->estado != 'borrador') {
-            return back()->with('error', 'Solo se pueden editar contratos en borrador');
+        // Verificar permisos de edición
+        $user = Auth::user();
+        $organizacionId = $contrato->organizacion_id;
+
+        if (!$user->tienePermiso('editar-contrato', $organizacionId)) {
+            abort(403, 'No tienes permiso para editar contratos');
         }
 
         // Obtener supervisores y contratistas
@@ -265,5 +329,112 @@ class ContratoController extends Controller
         // Aquí puedes agregar lógica para registrar en historial o notificar
 
         return back()->with('success', 'Estado del contrato actualizado exitosamente');
+    }
+
+    /**
+     * Subir archivo del contrato
+     */
+    public function subirArchivo(Request $request, Contrato $contrato)
+    {
+        $validated = $request->validate([
+            'archivo' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240', // Max 10MB
+            'tipo_documento' => 'required|in:contrato_firmado,adicion,suspension,acta_inicio,acta_liquidacion,otro',
+            'descripcion' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $archivo = $request->file('archivo');
+
+            // Generar nombre único para el archivo
+            $nombreOriginal = $archivo->getClientOriginalName();
+            $extension = $archivo->getClientOriginalExtension();
+            $nombreArchivo = $contrato->numero_contrato . '_' .
+                $validated['tipo_documento'] . '_' .
+                time() . '.' . $extension;
+
+            // Definir ruta en el servidor FTP
+            $ruta = 'contratos/' . $contrato->organizacion_id . '/' . $nombreArchivo;
+
+            // Subir archivo al servidor FTP
+            $contenido = file_get_contents($archivo->getRealPath());
+            Storage::disk('ftp')->put($ruta, $contenido);
+
+            // Guardar registro en la base de datos
+            $contratoArchivo = ContratoArchivo::create([
+                'contrato_id' => $contrato->id,
+                'subido_por' => Auth::id(),
+                'nombre_original' => $nombreOriginal,
+                'nombre_archivo' => $nombreArchivo,
+                'ruta' => $ruta,
+                'tipo_archivo' => $extension,
+                'mime_type' => $archivo->getMimeType(),
+                'tamaño' => $archivo->getSize(),
+                'tipo_documento' => $validated['tipo_documento'],
+                'descripcion' => $validated['descripcion'] ?? null,
+            ]);
+
+            return back()->with('success', 'Archivo subido exitosamente');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Descargar archivo del contrato
+     */
+    public function descargarArchivo(ContratoArchivo $archivo)
+    {
+        try {
+            // Verificar permisos
+            $user = Auth::user();
+            $contrato = $archivo->contrato;
+
+            if (
+                !$user->tienePermiso('ver-todos-contratos', $contrato->organizacion_id) &&
+                $contrato->contratista_id != $user->id &&
+                $contrato->supervisor_id != $user->id
+            ) {
+                abort(403, 'No tienes permiso para descargar este archivo');
+            }
+
+            // Descargar del servidor FTP
+            if (!Storage::disk('ftp')->exists($archivo->ruta)) {
+                return back()->with('error', 'El archivo no existe en el servidor');
+            }
+
+            $contenido = Storage::disk('ftp')->get($archivo->ruta);
+
+            return response($contenido)
+                ->header('Content-Type', $archivo->mime_type)
+                ->header('Content-Disposition', 'attachment; filename="' . $archivo->nombre_original . '"');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al descargar el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Eliminar archivo del contrato
+     */
+    public function eliminarArchivo(ContratoArchivo $archivo)
+    {
+        try {
+            // Verificar permisos
+            $user = Auth::user();
+            $contrato = $archivo->contrato;
+
+            if (!$user->tienePermiso('eliminar-archivo-contrato', $contrato->organizacion_id)) {
+                abort(403, 'No tienes permiso para eliminar archivos');
+            }
+
+            // Eliminar (el modelo se encarga de eliminar del FTP mediante el evento boot)
+            $archivo->delete();
+
+            return back()->with('success', 'Archivo eliminado exitosamente');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al eliminar el archivo: ' . $e->getMessage());
+        }
     }
 }

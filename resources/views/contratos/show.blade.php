@@ -200,6 +200,93 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Archivos del Contrato -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                                    <i class="fas fa-paperclip text-accent mr-2"></i>
+                                    Archivos del Contrato
+                                </h2>
+                                @if(Auth::user()->tienePermiso('subir-archivo-contrato', $contrato->organizacion_id))
+                                <button onclick="abrirModalSubirArchivo()" 
+                                        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center text-sm">
+                                    <i class="fas fa-upload mr-2"></i>
+                                    Subir Archivo
+                                </button>
+                                @endif
+                            </div>
+
+                            @if($contrato->archivos->count() > 0)
+                            <div class="space-y-3">
+                                @foreach($contrato->archivos as $archivo)
+                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-accent transition-colors">
+                                    <div class="flex items-center space-x-3 flex-1">
+                                        <!-- Icono según tipo de archivo -->
+                                        <div class="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent flex-shrink-0">
+                                            @if($archivo->tipo_archivo == 'pdf')
+                                                <i class="fas fa-file-pdf text-2xl"></i>
+                                            @elseif(in_array($archivo->tipo_archivo, ['doc', 'docx']))
+                                                <i class="fas fa-file-word text-2xl"></i>
+                                            @elseif(in_array($archivo->tipo_archivo, ['xls', 'xlsx']))
+                                                <i class="fas fa-file-excel text-2xl"></i>
+                                            @else
+                                                <i class="fas fa-file text-2xl"></i>
+                                            @endif
+                                        </div>
+
+                                        <!-- Información del archivo -->
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <p class="font-semibold text-gray-800 truncate">{{ $archivo->nombre_original }}</p>
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary whitespace-nowrap">
+                                                    {{ str_replace('_', ' ', ucfirst($archivo->tipo_documento)) }}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-secondary">
+                                                <span><i class="fas fa-weight-hanging mr-1"></i>{{ $archivo->tamaño_formateado }}</span>
+                                                <span><i class="fas fa-calendar mr-1"></i>{{ $archivo->created_at->format('d/m/Y H:i') }}</span>
+                                                <span><i class="fas fa-user mr-1"></i>{{ $archivo->subidoPor->nombre }}</span>
+                                            </div>
+                                            @if($archivo->descripcion)
+                                            <p class="text-sm text-gray-600 mt-1">{{ $archivo->descripcion }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <!-- Acciones -->
+                                    <div class="flex items-center space-x-2 ml-3">
+                                        <a href="{{ route('contratos.archivos.descargar', $archivo) }}" 
+                                           class="text-accent hover:text-primary transition-colors p-2"
+                                           title="Descargar">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        @if(Auth::user()->tienePermiso('eliminar-archivo-contrato', $contrato->organizacion_id))
+                                        <form action="{{ route('contratos.archivos.eliminar', $archivo) }}" 
+                                              method="POST" 
+                                              onsubmit="return confirm('¿Estás seguro de eliminar este archivo?')"
+                                              class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="text-danger hover:text-red-700 transition-colors p-2"
+                                                    title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                            @else
+                            <div class="text-center py-8">
+                                <i class="fas fa-folder-open text-6xl text-gray-300 mb-3"></i>
+                                <p class="text-secondary font-medium">No hay archivos adjuntos</p>
+                                <p class="text-sm text-gray-400 mt-1">Sube el primer archivo del contrato</p>
+                            </div>
+                            @endif
+                        </div>
                     </div>
 
                     <!-- Columna Lateral -->
@@ -331,14 +418,132 @@
     </div>
 </div>
 
-<!-- Aquí irían los modales (vincular contratista, cambiar supervisor, cambiar estado) -->
-<!-- Mantén la misma estructura de modales que tenías pero adapta las clases a Tailwind -->
+<!-- Modal para Subir Archivo -->
+<div id="modalSubirArchivo" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-upload text-primary mr-2"></i>
+                    Subir Archivo
+                </h3>
+                <button onclick="cerrarModalSubirArchivo()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <form action="{{ route('contratos.archivos.subir', $contrato) }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="p-6 space-y-4">
+                <!-- Tipo de Documento -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de Documento <span class="text-danger">*</span>
+                    </label>
+                    <select name="tipo_documento" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="contrato_firmado">Contrato Firmado</option>
+                        <option value="adicion">Adición</option>
+                        <option value="suspension">Suspensión</option>
+                        <option value="acta_inicio">Acta de Inicio</option>
+                        <option value="acta_liquidacion">Acta de Liquidación</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <!-- Archivo -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Archivo <span class="text-danger">*</span>
+                    </label>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-500">
+                                    <span class="font-semibold">Click para subir</span> o arrastra el archivo
+                                </p>
+                                <p class="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, XLS, XLSX (Máx. 10MB)</p>
+                            </div>
+                            <input type="file" name="archivo" accept=".pdf,.doc,.docx,.xls,.xlsx" required class="hidden" 
+                                   onchange="mostrarNombreArchivo(this)">
+                        </label>
+                    </div>
+                    <p id="nombreArchivoSeleccionado" class="text-sm text-accent mt-2 hidden"></p>
+                </div>
+
+                <!-- Descripción -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Descripción (Opcional)
+                    </label>
+                    <textarea name="descripcion" rows="3"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                              placeholder="Agrega una descripción del archivo..."></textarea>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-sm text-blue-800 flex items-start">
+                        <i class="fas fa-info-circle mr-2 mt-0.5"></i>
+                        <span>El archivo se subirá de forma segura al servidor FTP configurado.</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" 
+                        onclick="cerrarModalSubirArchivo()"
+                        class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition-all flex items-center">
+                    <i class="fas fa-upload mr-2"></i>
+                    Subir Archivo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 @endsection
 
 @push('scripts')
 <script>
-    // Funciones para los modales (mantén las que ya tienes)
+    // Modal de subir archivo
+    function abrirModalSubirArchivo() {
+        document.getElementById('modalSubirArchivo').classList.remove('hidden');
+    }
+
+    function cerrarModalSubirArchivo() {
+        document.getElementById('modalSubirArchivo').classList.add('hidden');
+        // Limpiar formulario
+        document.querySelector('#modalSubirArchivo form').reset();
+        document.getElementById('nombreArchivoSeleccionado').classList.add('hidden');
+    }
+
+    function mostrarNombreArchivo(input) {
+        const nombreArchivo = input.files[0]?.name;
+        const elemento = document.getElementById('nombreArchivoSeleccionado');
+        
+        if (nombreArchivo) {
+            elemento.textContent = '📄 ' + nombreArchivo;
+            elemento.classList.remove('hidden');
+        } else {
+            elemento.classList.add('hidden');
+        }
+    }
+
+    // Cerrar modal al hacer click fuera
+    document.getElementById('modalSubirArchivo')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            cerrarModalSubirArchivo();
+        }
+    });
+
+    // Funciones para otros modales
     function abrirModalVincular() {
         // Lógica para abrir modal de vincular contratista
         console.log('Abrir modal vincular contratista');

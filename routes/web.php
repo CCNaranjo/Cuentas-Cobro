@@ -162,6 +162,25 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/buscar/contratista', [ContratoController::class, 'buscarContratista'])
                 ->name('contratos.buscar-contratista');
 
+            // ============================================
+            // ARCHIVOS DE CONTRATOS - NUEVAS RUTAS
+            // ============================================
+            Route::prefix('archivos')->group(function () {
+                // Descargar archivo (debe ir antes de la ruta con {archivo})
+                Route::get('/{archivo}/descargar', [ContratoController::class, 'descargarArchivo'])
+                    ->name('contratos.archivos.descargar');
+                
+                // Eliminar archivo
+                Route::delete('/{archivo}', [ContratoController::class, 'eliminarArchivo'])
+                    ->middleware('verificar.permiso:eliminar-archivo-contrato')
+                    ->name('contratos.archivos.eliminar');
+            });
+
+            // Subir archivo a un contrato específico
+            Route::post('/{contrato}/archivos', [ContratoController::class, 'subirArchivo'])
+                ->middleware('verificar.permiso:subir-archivo-contrato')
+                ->name('contratos.archivos.subir');
+
             // Rutas con ID específicas
             Route::get('/{contrato}/editar', [ContratoController::class, 'edit'])
                 ->middleware('verificar.permiso:editar-contrato')
