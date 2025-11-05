@@ -42,6 +42,19 @@
                             <i class="bi bi-x-circle mr-2"></i>
                             Inactivos
                         </button>
+                        <!-- Nueva Tab de Pendientes -->
+                        <button class="tab-button pb-3 border-b-2 border-transparent text-gray-600 hover:text-blue-900 transition-colors relative"
+                                data-tab="pendientes"
+                                type="button"
+                                role="tab">
+                            <i class="bi bi-clock-history mr-2"></i>
+                            Pendientes
+                            @if($organizacion->vinculacionesPendientes()->where('estado', 'pendiente')->count() > 0)
+                                <span class="absolute -top-1 -right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                    {{ $organizacion->vinculacionesPendientes()->where('estado', 'pendiente')->count() }}
+                                </span>
+                            @endif
+                        </button>
                     </div>
                 </div>
 
@@ -174,7 +187,8 @@
                                                 </a>
                                                 @endif
                                                 
-                                                @if(auth()->user()->tienePermiso('editar-usuario', $organizacion->id))
+                                                @if(auth()->user()->tienePermiso('editar-usuario', $organizacion->id) 
+                                                && auth()->user()->id !== $usuario->id)
                                                 <button onclick="openEditRolModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $rolUsuario ? $rolUsuario->id : null }}')" 
                                                         class="inline-flex items-center p-2 border border-gray-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
                                                         title="Cambiar rol">
@@ -182,7 +196,8 @@
                                                 </button>
                                                 @endif
 
-                                                @if(auth()->user()->tienePermiso('cambiar-estado-usuario', $organizacion->id))
+                                                @if(auth()->user()->tienePermiso('cambiar-estado-usuario', $organizacion->id)
+                                                && auth()->user()->id !== $usuario->id)
                                                 <button onclick="openEstadoModal('{{ $usuario->id }}', '{{ $usuario->nombre }}', '{{ $usuario->estado }}')" 
                                                         class="inline-flex items-center p-2 border border-gray-300 rounded-lg text-yellow-600 hover:bg-yellow-50 transition-colors"
                                                         title="Cambiar estado">
@@ -279,6 +294,66 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- Tab Pendientes -->
+                    <div class="tab-pane hidden m-4 " id="pendientes" role="tabpanel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h5 class="text-lg font-semibold text-blue-900">Vinculaciones Pendientes</h5>
+                            <a href="{{ route('usuarios.pendientes') }}" class="inline-flex items-center px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors text-sm">
+                                <i class="bi bi-clock-history mr-2"></i>Gestionar Pendientes
+                            </a>
+                        </div>
+
+                        @if($organizacion->vinculacionesPendientes->count() > 0)
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                @foreach($organizacion->vinculacionesPendientes as $pendiente)
+                                <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-orange-500">
+                                    <div class="p-4">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="flex items-center">
+                                                <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 font-semibold mr-3">
+                                                    {{ substr($pendiente->usuario->nombre, 0, 1) }}
+                                                </div>
+                                                <div>
+                                                    <h6 class="font-semibold text-gray-900 mb-0">{{ $pendiente->usuario->nombre }}</h6>
+                                                    <small class="text-gray-500">{{ $pendiente->usuario->email }}</small>
+                                                </div>
+                                            </div>
+                                            <small class="text-gray-400">{{ $pendiente->created_at->diffForHumans() }}</small>
+                                        </div>
+                                        
+                                        @if($pendiente->codigo_vinculacion_usado)
+                                        <div class="mb-3 p-2 bg-gray-50 rounded-lg">
+                                            <small class="text-gray-600">
+                                                <i class="bi bi-key mr-1"></i>Código usado: 
+                                                <code class="ml-1 font-mono">{{ $pendiente->codigo_vinculacion_usado }}</code>
+                                            </small>
+                                        </div>
+                                        @endif
+
+                                        <div class="flex gap-2">
+                                            <a href="{{ route('usuarios.pendientes') }}" 
+                                            class="flex-1 inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm">
+                                                <i class="bi bi-check-circle mr-2"></i>Asignar Rol
+                                            </a>
+                                            <button type="button" 
+                                                    class="inline-flex items-center p-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                    onclick="rechazarModal('{{ $pendiente->id }}', '{{ $pendiente->usuario->nombre }}')">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-8">
+                                <i class="bi bi-check-circle text-5xl text-green-500 mb-3"></i>
+                                <h5 class="text-lg font-semibold text-green-600 mb-2">¡Todo al día!</h5>
+                                <p class="text-gray-500">No hay vinculaciones pendientes por revisar</p>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -499,6 +574,26 @@
         selectEstado.value = estadoActual;
         
         modal.classList.remove('hidden');
+    }
+
+    // Función para abrir modal de rechazar vinculación
+    function rechazarModal(vinculacionId, nombreUsuario) {
+        if (confirm(`¿Estás seguro de que deseas rechazar la vinculación de ${nombreUsuario}?`)) {
+            // Aquí puedes hacer una petición AJAX o redireccionar
+            fetch(`/vinculaciones/${vinculacionId}/rechazar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
     }
 </script>
 @endpush

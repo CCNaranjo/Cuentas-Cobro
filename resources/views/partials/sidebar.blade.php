@@ -55,8 +55,9 @@
             </a>
             @endif
 
-            <!-- Roles y permisos (Solo Admin Global) -->
-            @if(auth()->user()->esAdminGlobal())
+            <!-- Roles y permisos (Solo Admin Global y organizacion) -->
+            @if(auth()->user()->esAdminGlobal() ||
+                auth()->user()->tienePermiso('ver-roles', session('organizacion_actual')))
             <a href="{{ route('roles.index') }}" 
                class="sidebar-link group {{ request()->routeIs('organizaciones.*') ? 'active' : '' }}">
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('organizaciones.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
@@ -136,14 +137,14 @@
                 Sistema
             </p>
             
-            <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+            <a href="{{ route('configuracion.index') }}" 
+               class="sidebar-link group {{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('configuracion.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
                 <i class="fas fa-cog text-lg"></i>
-                <span>Configuración</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
+                <span>Configuracion</span>
             </a>
 
-            <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
+            <a href="configuracion.index" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
                 <i class="fas fa-question-circle text-lg"></i>
                 <span>Ayuda</span>

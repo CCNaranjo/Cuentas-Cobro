@@ -1,238 +1,230 @@
 @extends('layouts.app-dashboard')
 
-@section('title', 'Dashboard - ARCA-D')
+@section('title', 'Bienvenido a ARCA-D')
 
 @section('content')
-<div class="flex h-screen bg-bg-main overflow-hidden">
-    <!-- Main Content (Sin sidebar para usuarios sin vinculación) -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Header Simplificado -->
-        <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
-            <div class="flex items-center">
-                <div class="w-32">
-                    <x-logo primary-color="#004AAD" secondary-color="#00BCD4"></x-logo>
-                </div>
+
+<div class="flex-1 flex flex-col overflow-hidden">
+    @include('partials.header')
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Hero Section -->
+            <div class="bg-gradient-to-br from-primary to-accent rounded-xl shadow-lg text-white text-center p-12 mb-6">
+                <i class="bi bi-shield-check text-8xl opacity-30 mb-6"></i>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">¡Bienvenido a ARCA-D!</h1>
+                <p class="text-xl md:text-2xl mb-6 font-light">Sistema de Administración y Registro de Contratos y Cuentas</p>
+                <p class="opacity-90 flex items-center justify-center">
+                    <i class="bi bi-info-circle mr-2"></i>
+                    Para comenzar, vincula tu cuenta a una organización
+                </p>
             </div>
 
-            <div class="flex items-center space-x-4">
-                <div class="relative" x-data="{ open: false }">
-                    <button 
-                        @click="open = !open"
-                        class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
-                            {{ substr(auth()->user()->nombre, 0, 1) }}
+            @if($vinculacionesPendientes->count() > 0)
+            <!-- Vinculaciones Pendientes -->
+            <div class="bg-white rounded-xl shadow-md mb-6">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h5 class="text-xl font-semibold text-warning flex items-center">
+                        <i class="bi bi-clock-history mr-2"></i>Vinculaciones Pendientes
+                    </h5>
+                </div>
+                <div class="p-6 space-y-4">
+                    @foreach($vinculacionesPendientes as $vinculacion)
+                    <div class="bg-yellow-50 border-l-4 border-warning rounded-lg p-4 flex items-start">
+                        <i class="bi bi-hourglass-split text-warning text-3xl mr-4"></i>
+                        <div class="flex-1">
+                            <h6 class="font-semibold text-gray-800 mb-1">Solicitud en revisión</h6>
+                            <p class="text-sm text-gray-600">
+                                {{ $vinculacion->organizacion->nombre_oficial }} - Enviada {{ $vinculacion->created_at->diffForHumans() }}
+                            </p>
                         </div>
-                        <span class="text-sm font-medium text-gray-700">{{ auth()->user()->nombre }}</span>
-                        <i class="fas fa-chevron-down text-gray-600 text-xs"></i>
-                    </button>
-
-                    <div 
-                        x-show="open"
-                        @click.away="open = false"
-                        x-transition
-                        class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-                        style="display: none;"
-                    >
-                        <a 
-                            href="{{ route('logout') }}" 
-                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
-                            class="flex items-center px-4 py-2 text-sm text-danger hover:bg-red-50 transition-colors"
-                        >
-                            <i class="fas fa-sign-out-alt mr-3 w-5"></i>
-                            Cerrar Sesión
-                        </a>
                     </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto p-6">
-            <div class="max-w-4xl mx-auto">
-                <!-- Estado Sin Vinculación -->
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-24 h-24 bg-warning/10 rounded-full mb-4">
-                        <i class="fas fa-user-clock text-warning text-5xl"></i>
-                    </div>
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                        ¡Hola, {{ auth()->user()->nombre }}! 👋
-                    </h1>
-                    <p class="text-lg text-secondary">
-                        Tu cuenta no está vinculada a ninguna organización
+                    @endforeach
+                    <p class="text-gray-500 text-sm flex items-start mt-4">
+                        <i class="bi bi-info-circle mr-2 mt-0.5"></i>
+                        El administrador de la organización revisará tu solicitud pronto
                     </p>
                 </div>
+            </div>
+            @endif
 
-                @if($vinculacionesPendientes->count() > 0)
-                    <!-- Vinculaciones Pendientes -->
-                    <div class="bg-blue-50 border-l-4 border-accent rounded-lg p-6 mb-6">
-                        <div class="flex items-start">
-                            <i class="fas fa-info-circle text-accent text-2xl mr-4 mt-1"></i>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-gray-800 mb-2">Solicitud en proceso</h3>
-                                <p class="text-sm text-secondary mb-4">
-                                    Tu solicitud de vinculación está siendo revisada por el administrador.
-                                </p>
-                                
-                                @foreach($vinculacionesPendientes as $vinculacion)
-                                <div class="bg-white rounded-lg p-4 mb-3">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="font-semibold text-gray-800">{{ $vinculacion->organizacion->nombre_oficial }}</p>
-                                            <p class="text-sm text-secondary">Solicitado: {{ $vinculacion->created_at->diffForHumans() }}</p>
-                                        </div>
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-warning/10 text-warning">
-                                            <i class="fas fa-clock mr-1"></i>
-                                            Pendiente
-                                        </span>
-                                    </div>
+            <!-- Opciones de Vinculación -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-md hover-lift">
+                    <div class="p-8 text-center">
+                        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="bi bi-key-fill text-4xl text-primary"></i>
+                        </div>
+                        <h5 class="text-xl font-semibold text-primary mb-3">Tengo un Código</h5>
+                        <p class="text-gray-500 mb-6">
+                            Si tienes un código de vinculación proporcionado por una organización, ingrésalo aquí
+                        </p>
+                        <button 
+                            x-data 
+                            @click="$dispatch('open-modal', 'codigo')" 
+                            class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition font-semibold inline-flex items-center">
+                            <i class="bi bi-arrow-right-circle mr-2"></i>Ingresar Código
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md hover-lift">
+                    <div class="p-8 text-center">
+                        <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="bi bi-search text-4xl text-accent"></i>
+                        </div>
+                        <h5 class="text-xl font-semibold text-accent mb-3">Buscar Organización</h5>
+                        <p class="text-gray-500 mb-6">
+                            Explora las organizaciones disponibles en el sistema
+                        </p>
+                        <button 
+                            onclick="document.getElementById('listaOrganizaciones').scrollIntoView({behavior: 'smooth'})" 
+                            class="border border-primary text-primary px-6 py-3 rounded-lg hover:bg-primary hover:text-white transition font-semibold inline-flex items-center">
+                            <i class="bi bi-list-ul mr-2"></i>Ver Lista
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Organizaciones -->
+            <div class="bg-white rounded-xl shadow-md" id="listaOrganizaciones">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h5 class="text-xl font-semibold text-primary flex items-center">
+                        <i class="bi bi-building mr-2"></i>Organizaciones Disponibles
+                    </h5>
+                </div>
+                <div>
+                    @if($organizacionesDisponibles->count() > 0)
+                    <div class="divide-y divide-gray-100">
+                        @foreach($organizacionesDisponibles as $org)
+                        <div class="p-6 hover:bg-gray-50 transition">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mr-4">
+                                    <i class="bi bi-building text-primary text-xl"></i>
                                 </div>
-                                @endforeach
+                                <div class="flex-1">
+                                    <h6 class="font-semibold text-gray-800 mb-1">{{ $org->nombre_oficial }}</h6>
+                                    <small class="text-gray-500 flex items-center">
+                                        <i class="bi bi-geo-alt mr-1"></i>
+                                        {{ $org->municipio }}, {{ $org->departamento }}
+                                    </small>
+                                </div>
+                                <div class="text-right">
+                                    <code class="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-mono">
+                                        {{ $org->telefono_contacto}}
+                                    </code>
+                                </div>
                             </div>
                         </div>
+                        @endforeach
                     </div>
-                @endif
-
-                <!-- Opciones para vincularse -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <!-- Opción 1: Con Código -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4 mx-auto">
-                            <i class="fas fa-key text-primary text-2xl"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-800 text-center mb-2">
-                            ¿Tienes un código de vinculación?
-                        </h3>
-                        <p class="text-sm text-secondary text-center mb-4">
-                            Si tienes un código proporcionado por una organización, ingrésalo aquí
-                        </p>
-
-                        <form action="{{ route('vincular-codigo') }}" method="POST" class="space-y-3">
-                            @csrf
-                            <div>
-                                <input 
-                                    type="text" 
-                                    name="codigo_vinculacion" 
-                                    placeholder="ORG-2025-XXXXXX"
-                                    value="{{ old('codigo_vinculacion') }}"
-                                    required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center font-mono @error('codigo_vinculacion') border-red-500 @enderror"
-                                >
-                                @error('codigo_vinculacion')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <button 
-                                type="submit" 
-                                class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all"
-                            >
-                                <i class="bi bi-link-45deg mr-2"></i>
-                                Vincular con Código
-                            </button>
-                        </form>
-
-<!-- Mensajes de éxito -->
-@if(session('success'))
-<div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-    <div class="flex items-center">
-        <i class="bi bi-check-circle text-green-500 mr-2"></i>
-        <span class="text-green-700">{{ session('success') }}</span>
-        @if(session('organizacion'))
-            <strong class="ml-1">{{ session('organizacion') }}</strong>
-        @endif
-    </div>
-</div>
-@endif
+                    @else
+                    <div class="text-center py-16">
+                        <i class="bi bi-building text-gray-200" style="font-size: 4rem;"></i>
+                        <p class="text-gray-500 mt-4">No hay organizaciones disponibles</p>
                     </div>
-
-                    <!-- Opción 2: Email Institucional -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-full mb-4 mx-auto">
-                            <i class="fas fa-at text-accent text-2xl"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-800 text-center mb-2">
-                            Email Institucional
-                        </h3>
-                        <p class="text-sm text-secondary text-center mb-4">
-                            Tu email actual: <strong>{{ auth()->user()->email }}</strong>
-                        </p>
-
-                        @if(str_contains(auth()->user()->email, '@'))
-                            <div class="bg-gray-50 rounded-lg p-4 text-center">
-                                <i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i>
-                                <p class="text-sm text-gray-700">
-                                    Si tu email pertenece a una organización, se detectará automáticamente cuando el administrador revise tu solicitud.
-                                </p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Información de Contacto -->
-                <div class="bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl p-6 text-center">
-                    <h3 class="text-xl font-bold mb-2">¿Necesitas ayuda?</h3>
-                    <p class="mb-4 opacity-90">
-                        Contacta con el administrador de tu organización para obtener un código de vinculación
-                    </p>
-                    <div class="flex justify-center space-x-6 text-sm">
-                        <div class="flex items-center">
-                            <i class="fas fa-envelope mr-2"></i>
-                            <span>soporte@arca-d.com</span>
-                        </div>
-                        <div class="flex items-center">
-                            <i class="fas fa-phone mr-2"></i>
-                            <span>+57 (1) 234-5678</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Instrucciones -->
-                <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-lightbulb text-warning mr-2"></i>
-                        ¿Cómo funciona el proceso?
-                    </h3>
-                    <div class="space-y-4">
-                        <div class="flex items-start">
-                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm mr-3 flex-shrink-0">
-                                1
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">Solicita vinculación</p>
-                                <p class="text-sm text-secondary">Ingresa un código de vinculación o espera a que tu dominio de email sea detectado</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start">
-                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm mr-3 flex-shrink-0">
-                                2
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">Revisión del administrador</p>
-                                <p class="text-sm text-secondary">El administrador de la organización revisará tu solicitud y asignará tu rol</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start">
-                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm mr-3 flex-shrink-0">
-                                3
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">¡Listo para usar!</p>
-                                <p class="text-sm text-secondary">Una vez aprobado, tendrás acceso completo según tu rol asignado</p>
-                            </div>
-                        </div>
-                    </div>
+                    @endif
                 </div>
             </div>
-        </main>
+        </div>
+    </div>
+
+    <!-- Modal: Ingresar Código -->
+    <div 
+        x-data="{ open: false }"
+        @open-modal.window="open = ($event.detail === 'codigo')"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        class="fixed inset-0 z-50 overflow-y-auto"
+        style="display: none;">
+        
+        <!-- Backdrop -->
+        <div 
+            class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+            @click="open = false">
+        </div>
+
+        <!-- Modal -->
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div 
+                x-show="open"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform scale-90"
+                x-transition:enter-end="opacity-100 transform scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 transform scale-100"
+                x-transition:leave-end="opacity-0 transform scale-90"
+                class="bg-white rounded-xl shadow-xl max-w-md w-full relative z-10">
+                
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <h5 class="text-xl font-semibold text-primary flex items-center">
+                            <i class="bi bi-key mr-2"></i>Vincular con Código
+                        </h5>
+                        <button 
+                            @click="open = false" 
+                            class="text-gray-400 hover:text-gray-600 transition">
+                            <i class="bi bi-x-lg text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <form action="{{ route('vincular-codigo') }}" method="POST">
+                    @csrf
+                    <div class="p-6">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6 flex items-start">
+                            <i class="bi bi-info-circle text-blue-500 mr-3 mt-0.5"></i>
+                            <span class="text-blue-700 text-sm">Ingresa el código proporcionado por la organización</span>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="codigo_vinculacion" class="block text-sm font-medium text-gray-700 mb-2">
+                                Código de Vinculación <span class="text-red-500">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                class="w-full px-4 py-3 text-center text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition font-mono tracking-wider"
+                                id="codigo_vinculacion" 
+                                name="codigo_vinculacion" 
+                                placeholder="ORG-2025-XXXXXX"
+                                required>
+                            <p class="mt-2 text-sm text-gray-500">Formato: ORG-YYYY-XXXXXX</p>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+                        <button 
+                            type="button" 
+                            @click="open = false"
+                            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition font-semibold">
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-semibold inline-flex items-center">
+                            <i class="bi bi-check-circle mr-2"></i>Vincular
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
-
-<!-- Logout Form -->
-<form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
-    @csrf
-</form>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+    // Alternativa sin Alpine.js - usando Bootstrap modal style
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalTrigger = document.querySelector('[x-data]');
+        if (modalTrigger) {
+            modalTrigger.addEventListener('click', function() {
+                // Implementación simple sin Alpine.js
+                console.log('Modal trigger clicked');
+            });
+        }
+    });
+</script>
 @endpush
 @endsection

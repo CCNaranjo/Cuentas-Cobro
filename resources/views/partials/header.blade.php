@@ -181,7 +181,7 @@
                     @endif
                 </div>
 
-                <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                <a href="{{ route('perfil') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                     <i class="fas fa-user-circle mr-3 text-gray-400 w-5"></i>
                     Mi Perfil
                 </a>

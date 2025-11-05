@@ -200,11 +200,88 @@
                 page-break-after: always;
             }
         }
+        /* Estilos personalizados para complementar Tailwind CSS */
+
+        /* Efecto hover para las tarjetas */
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Badges personalizados */
+        .badge-danger {
+            @apply bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full;
+        }
+
+        .badge-warning {
+            @apply bg-orange-100 text-orange-800 text-xs font-semibold px-2.5 py-0.5 rounded-full;
+        }
+
+        /* Botones con transiciones mejoradas */
+        .btn {
+            @apply transition-all duration-200 ease-in-out transform hover:scale-105;
+        }
+
+        /* Efectos de gradiente animados */
+        .bg-gradient-to-br {
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Mejoras de accesibilidad */
+        @media (prefers-reduced-motion: reduce) {
+            .hover-lift,
+            .btn,
+            .bg-gradient-to-br {
+                transition: none;
+                animation: none;
+            }
+        }
+
+        /* Estados de enfoque mejorados */
+        .btn:focus,
+        a:focus {
+            @apply outline-none ring-2 ring-primary ring-opacity-50;
+        }
+
+        /* Scrollbar personalizado para tablas */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-track {
+            @apply bg-gray-100 rounded;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            @apply bg-gray-300 rounded hover:bg-gray-400;
+        }
     </style>
     
     @stack('styles')
 </head>
 <body class="antialiased bg-bg-main">
+    @if ($errors->any())
+        <div class="mb-4">
+            <div class="bg-red-100 text-red-700 px-4 py-2 rounded">
+                <ul class="list-disc pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
     @yield('content')
     
     @stack('scripts')

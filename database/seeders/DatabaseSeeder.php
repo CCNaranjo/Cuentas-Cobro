@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             AdminGlobalSeeder::class,
             AlcaldiaEjemploSeeder::class,
             AdminOrganizacionSeeder::class,
+            ParametrosSistemaSeeder::class,
+            OrganizacionConfiguracionSeeder::class
         ]);
     }
 }
