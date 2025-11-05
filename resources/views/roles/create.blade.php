@@ -102,12 +102,24 @@
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
                                             required>
                                         <option value="">Seleccione un nivel</option>
-                                        <option value="1" {{ old('nivel_jerarquico') == 1 ? 'selected' : '' }}>Nivel 1 - Administración Global</option>
-                                        <option value="2" {{ old('nivel_jerarquico') == 2 ? 'selected' : '' }}>Nivel 2 - Administración Organización</option>
-                                        <option value="3" {{ old('nivel_jerarquico') == 3 ? 'selected' : '' }}>Nivel 3 - Gestión Operativa</option>
-                                        <option value="4" {{ old('nivel_jerarquico') == 4 ? 'selected' : '' }}>Nivel 4 - Usuarios Especializados</option>
-                                        <option value="5" {{ old('nivel_jerarquico') == 5 ? 'selected' : '' }}>Nivel 5 - Usuarios Básicos</option>
+                                        @if($nivelUsuario == 1)
+                                            <option value="2">Nivel 2 - Administración Organización</option>
+                                        @endif
+                                        @if($nivelUsuario <= 2)
+                                            <option value="3">Nivel 3 - Gestión Operativa</option>
+                                        @endif
+                                        @if($nivelUsuario <= 3)
+                                            <option value="4">Nivel 4 - Usuarios Especializados</option>
+                                        @endif
+                                        @if($nivelUsuario <= 4)
+                                            <option value="5">Nivel 5 - Usuarios Básicos</option>
+                                        @endif
                                     </select>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        @if($nivelUsuario == 2)
+                                            Solo puedes crear roles de nivel 3 o inferior
+                                        @endif
+                                    </p>
                                 </div>
 
                                 <!-- Resumen de Permisos -->

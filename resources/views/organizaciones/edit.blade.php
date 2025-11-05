@@ -178,25 +178,34 @@
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                             <i class="bi bi-person-gear text-green-600 mr-3"></i>
-                            Modificar Administrador
+                            Gestión de Administrador
                         </h2>
 
                         @php
                             $adminActual = $organizacion->usuarios()
                                 ->wherePivot('rol_id', function($query) use ($organizacion) {
                                     $query->select('id')
-                                          ->from('roles')
-                                          ->where('nombre', 'admin_organizacion')
-                                          ->where('organizacion_id', $organizacion->id);
+                                        ->from('roles')
+                                        ->where('nombre', 'admin_organizacion')
+                                        ->where('organizacion_id', $organizacion->id);
                                 })
                                 ->wherePivot('estado', 'activo')
                                 ->first();
+                            
+                            $usuariosOrganizacion = $organizacion->usuarios()
+                                ->wherePivot('estado', 'activo')
+                                ->where('usuarios.id', '!=', $adminActual?->id)
+                                ->get();
                         @endphp
 
                         @if($adminActual)
+                            <!-- Formulario para actualizar información del administrador actual -->
                             <form action="{{ route('organizaciones.actualizar-admin', $organizacion) }}" method="POST">
                                 @csrf
                                 @method('PUT')
+                                
+                                <!-- Campo oculto para el ID del usuario -->
+                                <input type="hidden" name="usuario_id" value="{{ $adminActual->id }}">
                                 
                                 <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
                                     <h3 class="font-semibold text-green-800 mb-4 flex items-center">
@@ -211,10 +220,10 @@
                                                 Nombre completo <span class="text-red-500">*</span>
                                             </label>
                                             <input type="text" 
-                                                   name="nombre" 
-                                                   value="{{ old('nombre', $adminActual->nombre) }}" 
-                                                   required
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                name="nombre" 
+                                                value="{{ old('nombre', $adminActual->nombre) }}" 
+                                                required
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         </div>
 
                                         <!-- Email -->
@@ -223,10 +232,10 @@
                                                 Email <span class="text-red-500">*</span>
                                             </label>
                                             <input type="email" 
-                                                   name="email" 
-                                                   value="{{ old('email', $adminActual->email) }}" 
-                                                   required
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                name="email" 
+                                                value="{{ old('email', $adminActual->email) }}" 
+                                                required
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         </div>
 
                                         <!-- Teléfono -->
@@ -235,10 +244,10 @@
                                                 Teléfono
                                             </label>
                                             <input type="tel" 
-                                                   name="telefono" 
-                                                   value="{{ old('telefono', $adminActual->telefono) }}" 
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                   placeholder="(601) 987-6543">
+                                                name="telefono" 
+                                                value="{{ old('telefono', $adminActual->telefono) }}" 
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="(601) 987-6543">
                                         </div>
 
                                         <!-- Documento de Identidad -->
@@ -247,10 +256,10 @@
                                                 Documento de identidad
                                             </label>
                                             <input type="text" 
-                                                   name="documento_identidad" 
-                                                   value="{{ old('documento_identidad', $adminActual->documento_identidad) }}" 
-                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                   placeholder="1234567890">
+                                                name="documento_identidad" 
+                                                value="{{ old('documento_identidad', $adminActual->documento_identidad) }}" 
+                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                placeholder="1234567890">
                                         </div>
 
                                         <!-- Estado -->
@@ -311,6 +320,49 @@
                                     </button>
                                 </div>
                             </form>
+
+                            <!-- Sección para cambiar de administrador -->
+                            @if($usuariosOrganizacion->count() > 0)
+                            <div class="mt-8 pt-6 border-t border-gray-200">
+                                <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                    <i class="bi bi-arrow-left-right text-blue-600 mr-2"></i>
+                                    Cambiar Administrador
+                                </h4>
+                                
+                                <form action="{{ route('organizaciones.cambiar-admin', $organizacion) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                        <div class="md:col-span-2">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                Seleccionar nuevo administrador
+                                            </label>
+                                            <select name="nuevo_admin_id" 
+                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                <option value="">Seleccione un usuario...</option>
+                                                @foreach($usuariosOrganizacion as $usuario)
+                                                <option value="{{ $usuario->id }}">
+                                                    {{ $usuario->nombre }} ({{ $usuario->email }})
+                                                </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <button type="submit" 
+                                                    class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center">
+                                                <i class="bi bi-arrow-left-right mr-2"></i>
+                                                Cambiar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        El usuario seleccionado será el nuevo administrador de la organización.
+                                    </p>
+                                </form>
+                            </div>
+                            @endif
+
                         @else
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                                 <div class="flex items-center">
@@ -319,7 +371,7 @@
                                         <h3 class="font-semibold text-yellow-800">Sin administrador asignado</h3>
                                         <p class="text-yellow-700 text-sm">Esta organización no tiene un administrador asignado.</p>
                                         <a href="{{ route('organizaciones.show', $organizacion) }}#usuarios" 
-                                           class="inline-flex items-center mt-2 text-yellow-700 hover:text-yellow-800 font-medium">
+                                        class="inline-flex items-center mt-2 text-yellow-700 hover:text-yellow-800 font-medium">
                                             <i class="bi bi-arrow-right mr-1"></i>
                                             Asignar administrador desde la vista de detalles
                                         </a>

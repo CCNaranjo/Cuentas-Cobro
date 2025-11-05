@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('nombre');
             $table->string('email')->unique();
+            $table->string('foto_perfil')->nullable();
             $table->string('password');
             $table->string('telefono')->nullable();
+            $table->string('direccion')->nullable();
             $table->string('documento_identidad')->unique()->nullable();
             $table->enum('tipo_vinculacion', [
                 'global_admin', 
@@ -30,6 +32,7 @@ return new class extends Migration
                 'pendiente_verificacion',
                 'suspendido'
             ])->default('pendiente_verificacion');
+            $table->json('preferencias_notificaciones')->nullable();
             $table->timestamp('email_verificado_en')->nullable();
             $table->timestamp('ultimo_acceso')->nullable();
             $table->rememberToken();

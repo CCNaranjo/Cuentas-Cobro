@@ -56,6 +56,22 @@ class Organizacion extends Model
         return $this->hasMany(VinculacionPendiente::class, 'organizacion_id');
     }
 
+    /**
+     * Relación con Configuración de Organización (1:1)
+     */
+    public function configuracion()
+    {
+        return $this->hasOne(OrganizacionConfiguracion::class);
+    }
+
+    /**
+     * Obtener configuración con caché
+     */
+    public function getConfiguracionAttribute()
+    {
+        return OrganizacionConfiguracion::obtenerPorOrganizacion($this->id);
+    }
+
     // Métodos auxiliares
     public function dominioCoincide($email)
     {

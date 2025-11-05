@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UsuarioController extends Controller
 {
@@ -428,4 +429,102 @@ class UsuarioController extends Controller
 
         return back()->with('success', 'Rol actualizado exitosamente');
     }
+    /**
+     * Mostrar perfil propio del usuario autenticado
+     */
+    public function perfil()
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        // Cargar relaciones necesarias
+        $usuario = Usuario::with([
+            'organizacionesVinculadas',
+            'roles',
+            'contratosComoContratista',
+            'contratosComoSupervisor'
+        ])->findOrFail($user->id);
+        
+        return view('usuarios.perfil', compact('usuario'));
+    }
+
+    /**
+     * Actualizar perfil propio
+     */
+    public function actualizarPerfil(Request $request)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'telefono' => 'nullable|string|max:20',
+            'direccion' => 'nullable|string|max:255',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('usuarios', 'email')->ignore($user->id)
+            ],
+        ]);
+        
+        $user->update($validated);
+        
+        Log::info('Usuario actualizó su perfil', [
+            'usuario_id' => $user->id,
+            'cambios' => $validated
+        ]);
+        
+        return back()->with('success', 'Perfil actualizado exitosamente');
+    }
+
+    /**
+     * Cambiar contraseña propia
+     */
+    public function cambiarPassword(Request $request)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'password_actual' => 'required|string',
+            'password_nuevo' => 'required|string|min:8|confirmed',
+        ]);
+        
+        // Verificar contraseña actual
+        if (!Hash::check($validated['password_actual'], $user->password)) {
+            return back()->withErrors(['password_actual' => 'La contraseña actual no es correcta']);
+        }
+        
+        $user->update([
+            'password' => Hash::make($validated['password_nuevo'])
+        ]);
+        
+        Log::info('Usuario cambió su contraseña', ['usuario_id' => $user->id]);
+        
+        return back()->with('success', 'Contraseña actualizada exitosamente');
+    }
+
+    /**
+     * Actualizar preferencias de notificaciones
+     */
+    public function actualizarNotificaciones(Request $request)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'notificaciones_email' => 'boolean',
+            'notificaciones_sms' => 'boolean',
+            'notificaciones_sistema' => 'boolean',
+        ]);
+        
+        // Asumiendo que tienes un campo JSON para preferencias
+        $user->update([
+            'preferencias_notificaciones' => $validated
+        ]);
+        
+        return back()->with('success', 'Preferencias de notificaciones actualizadas');
+    }
+    
 }

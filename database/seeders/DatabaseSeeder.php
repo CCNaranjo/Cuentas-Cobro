@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             AdminOrganizacionSeeder::class,
             ContratoSeeder::class,
             CuentaCobroSeeder::class,
+            ParametrosSistemaSeeder::class,
+            OrganizacionConfiguracionSeeder::class
         ]);
     }
 }

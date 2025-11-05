@@ -6,6 +6,7 @@ use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Middleware\VerificarAdminGlobal;
 use App\Http\Middleware\VerificarPermiso;
 use App\Http\Middleware\VerificarAccesoOrganizacion;
@@ -72,25 +73,31 @@ Route::middleware(['auth'])->group(function () {
     // ADMIN GLOBAL - Organizaciones
     // ============================================
     Route::middleware([VerificarAdminGlobal::class])
-        ->prefix('organizaciones')
-        ->group(function () {
-            Route::get('/', [OrganizacionController::class, 'index'])
-                ->name('organizaciones.index');
-            Route::get('/crear', [OrganizacionController::class, 'create'])
-                ->name('organizaciones.create');
-            Route::post('/', [OrganizacionController::class, 'store'])
-                ->name('organizaciones.store');
-            Route::get('/{organizacion}', [OrganizacionController::class, 'show'])
-                ->name('organizaciones.show');
-            Route::get('/{organizacion}/editar', [OrganizacionController::class, 'edit'])
-                ->name('organizaciones.edit');
-            Route::put('/{organizacion}', [OrganizacionController::class, 'update'])
-                ->name('organizaciones.update');
-            Route::post('/{organizacion}/seleccionar', [OrganizacionController::class, 'seleccionar'])
-                ->name('organizaciones.seleccionar');
-            Route::post('/{organizacion}/asignar-admin', [OrganizacionController::class, 'asignarAdmin'])
-                ->name('organizaciones.asignar-admin');
-        });
+    ->prefix('organizaciones')
+    ->group(function () {
+        Route::get('/', [OrganizacionController::class, 'index'])
+            ->name('organizaciones.index');
+        Route::post('/organizaciones/{organizacion}/seleccionar', [OrganizacionController::class, 'seleccionar'])
+            ->name('organizaciones.seleccionar');
+        Route::get('/create', [OrganizacionController::class, 'create'])
+            ->name('organizaciones.create');
+        Route::post('/', [OrganizacionController::class, 'store'])
+            ->name('organizaciones.store');
+        Route::get('/{organizacion}', [OrganizacionController::class, 'show'])
+            ->name('organizaciones.show');
+        Route::get('/{organizacion}/edit', [OrganizacionController::class, 'edit'])
+            ->name('organizaciones.edit');
+        Route::put('/{organizacion}', [OrganizacionController::class, 'update'])
+            ->name('organizaciones.update');
+        Route::post('/organizaciones/{organizacion}/asignar-admin', [OrganizacionController::class, 'asignarAdmin'])
+            ->name('organizaciones.asignar-admin');
+        Route::put('/{organizacion}/actualizar-admin', [OrganizacionController::class, 'actualizarAdmin'])
+            ->name('organizaciones.actualizar-admin');
+        Route::put('/{organizacion}/cambiar-admin', [OrganizacionController::class, 'cambiarAdmin'])
+            ->name('organizaciones.cambiar-admin');
+    });
+    Route::post('/vincular-codigo', [OrganizacionController::class, 'vincularCodigo'])
+            ->name('vincular-codigo');
 
     // ============================================
     // GESTIÓN DE USUARIOS
@@ -123,30 +130,42 @@ Route::middleware(['auth'])->group(function () {
                 ->name('usuarios.show');
         });
 
-    // ============================================
-    // GESTIÓN DE ROLES Y PERMISOS
-    // Solo admin_global puede gestionar roles
-    // ============================================
-    Route::middleware([VerificarAdminGlobal::class])
-        ->prefix('roles')
-        ->group(function () {
-            Route::get('/', [RolesController::class, 'index'])
-                ->name('roles.index');
-            Route::get('/create', [RolesController::class, 'create'])
-                ->name('roles.create');
-            Route::post('/', [RolesController::class, 'store'])
-                ->name('roles.store');
-            Route::get('/{role}', [RolesController::class, 'show'])
-                ->name('roles.show');
-            Route::get('/{role}/edit', [RolesController::class, 'edit'])
-                ->name('roles.edit');
-            Route::put('/{role}', [RolesController::class, 'update'])
-                ->name('roles.update');
-            Route::delete('/{role}', [RolesController::class, 'destroy'])
-                ->name('roles.destroy');
-            Route::get('/modulo/{moduloId}/permisos', [RolesController::class, 'getPermisosByModulo'])
-                ->name('roles.permisos-by-modulo');
-        });
+// ============================================
+// GESTIÓN DE ROLES Y PERMISOS
+// ============================================
+
+// Index - Nivel 1, 2 y 3 pueden ver
+Route::middleware([VerificarPermiso::class . ':ver-roles'])
+    ->get('/roles', [RolesController::class, 'index'])
+    ->name('roles.index');
+
+// Crear - Nivel 1 y 2
+Route::middleware([VerificarPermiso::class . ':crear-rol'])
+    ->group(function () {
+        Route::get('/roles/create', [RolesController::class, 'create'])
+            ->name('roles.create');
+        Route::post('/roles', [RolesController::class, 'store'])
+            ->name('roles.store');
+    });
+
+// Ver - Nivel 1, 2 y 3
+Route::middleware([VerificarPermiso::class . ':ver-roles'])
+    ->get('/roles/{rol}', [RolesController::class, 'show'])
+    ->name('roles.show');
+
+// Editar - Nivel 1 y 2
+Route::middleware([VerificarPermiso::class . ':asignar-permisos-rol'])
+    ->group(function () {
+        Route::get('/roles/{rol}/edit', [RolesController::class, 'edit'])
+            ->name('roles.edit');
+        Route::put('/roles/{rol}', [RolesController::class, 'update'])
+            ->name('roles.update');
+    });
+
+// Eliminar - Solo Nivel 1
+Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
+    ->delete('/roles/{rol}', [RolesController::class, 'destroy'])
+    ->name('roles.destroy');
 
     // ============================================
     // CONTRATOS
@@ -214,13 +233,44 @@ Route::middleware(['auth'])->group(function () {
                 ->name('contratos.update');
         });
 
+    // ========== RUTAS DE CONFIGURACIÓN ==========
+    
+    // Ruta principal (redirige según rol)
+    Route::get('/configuracion', [ConfiguracionController::class, 'index'])
+        ->name('configuracion.index');
+    
+    // Configuración Global (Solo Admin Global)
+    Route::middleware([VerificarAdminGlobal::class])->group(function () {
+        Route::get('/configuracion/global', [ConfiguracionController::class, 'global'])
+            ->name('configuracion.global');
+        Route::post('/configuracion/global', [ConfiguracionController::class, 'actualizarGlobal'])
+            ->name('configuracion.actualizar-global');
+        Route::get('/configuracion/exportar-logs', [ConfiguracionController::class, 'exportarLogs'])
+            ->name('configuracion.exportar-logs');
+    });
+    
+    // Configuración de Organización (Admin Organización)
+    Route::middleware([VerificarAccesoOrganizacion::class])->group(function () {
+        Route::get('/configuracion/organizacion', [ConfiguracionController::class, 'organizacion'])
+            ->name('configuracion.organizacion');
+        Route::post('/configuracion/organizacion', [ConfiguracionController::class, 'actualizarOrganizacion'])
+            ->name('configuracion.actualizar-organizacion');
+    });
+
     // ============================================
     // PERFIL DE USUARIO
     // ============================================
     Route::prefix('perfil')->group(function () {
-        Route::get('/', [UsuarioController::class, 'perfil'])->name('perfil.show');
-        Route::put('/', [UsuarioController::class, 'actualizarPerfil'])->name('perfil.update');
-        Route::put('/password', [UsuarioController::class, 'cambiarPassword'])->name('perfil.password');
+        Route::get('/', [UsuarioController::class, 'perfil'])
+            ->name('perfil');
+        Route::put('/actualizar', [UsuarioController::class, 'actualizarPerfil'])
+            ->name('perfil.actualizar');
+        Route::put('/cambiar-password', [UsuarioController::class, 'cambiarPassword'])
+            ->name('perfil.cambiar-password');
+        Route::put('/notificaciones', [UsuarioController::class, 'actualizarNotificaciones'])
+            ->name('perfil.actualizar-notificaciones');
+        Route::post('/subir-foto', [UsuarioController::class, 'subirFotoPerfil'])
+            ->name('perfil.subir-foto');
     });
 });
 

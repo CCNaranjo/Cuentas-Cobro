@@ -94,13 +94,14 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Generar cheques', 'slug' => 'generar-chekes', 'descripcion' => 'Emitir cheques', 'modulo_id' => 6],
             ['nombre' => 'Transferencias bancarias', 'slug' => 'transferir-banco', 'descripcion' => 'Realizar transferencias', 'modulo_id' => 6],
             ['nombre' => 'Confirmación de pagos', 'slug' => 'confirmar-pagos', 'descripcion' => 'Confirmar pagos', 'modulo_id' => 6],
-            ['nombre' => 'Generar órdenes de pago', 'slug' => 'generar-ordenes-de-pago', 'descripcion' => 'Crear órdenes de pago', 'modulo_id' => 6],
+            ['nombre' => 'Generar órdenes de pago', 'slug' => 'generar-ordenes-pago', 'descripcion' => 'Crear órdenes de pago', 'modulo_id' => 6],
             
             // ============================================
             // PRESUPUESTO
             // ============================================
             ['nombre' => 'Ver presupuesto', 'slug' => 'ver-presupuesto', 'descripcion' => 'Consultar presupuesto', 'modulo_id' => 7],
-            ['nombre' => 'Gestionar presupuesto', 'slug' => 'generar-presupuesto', 'descripcion' => 'Administrar presupuesto', 'modulo_id' => 7],
+            ['nombre' => 'Gestionar presupuesto', 'slug' => 'gestionar-presupuesto', 'descripcion' => 'Administrar presupuesto', 'modulo_id' => 7],
+            ['nombre' => 'Aprobacion Final', 'slug' => 'aprobacion-final', 'descripcion' => 'Consultar presupuesto', 'modulo_id' => 7],
             
             // ============================================
             // REPORTES (modulo_id: 7)

@@ -109,6 +109,21 @@ class Usuario extends Authenticatable
             ->exists();
     }
 
+    /**
+     * Obtener el nivel jerárquico del usuario
+     */
+    public function obtenerNivelJerarquico(): int
+    {
+        if ($this->esAdminGlobal()) {
+            return 1;
+        }
+        
+        // Obtener el rol de menor nivel (más alto en jerarquía)
+        $rol = $this->roles()->orderBy('nivel_jerarquico')->first();
+        
+        return $rol ? $rol->nivel_jerarquico : 5;
+    }
+
     public function tienePermiso($slugPermiso, $organizacionId = null)
     {
         // Si es admin_global, tiene todos los permisos
