@@ -165,13 +165,11 @@
                                                title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            @if($contrato->estado == 'borrador' && auth()->user()->tienePermiso('editar-contrato', session('organizacion_actual')))
                                             <a href="{{ route('contratos.edit', $contrato) }}" 
                                                class="text-primary hover:text-primary-dark transition-colors p-2"
                                                title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            @endif
                                         </div>
                                     </td>
                                 </tr>

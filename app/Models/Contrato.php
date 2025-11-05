@@ -55,6 +55,12 @@ class Contrato extends Model
         return $this->belongsTo(Usuario::class, 'vinculado_por');
     }
 
+    // NUEVA RELACIÓN
+    public function archivos()
+    {
+        return $this->hasMany(ContratoArchivo::class, 'contrato_id');
+    }
+
     /*
     public function cuentasCobro()
     {
