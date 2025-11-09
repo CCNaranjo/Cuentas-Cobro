@@ -79,7 +79,6 @@ class RolesController extends Controller
         
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|unique:roles,nombre|regex:/^[a-z_]+$/',
-            'nombre_mostrable' => 'required|string|max:150',
             'descripcion' => 'nullable|string',
             'nivel_jerarquico' => 'required|integer|min:1|max:5',
             'permisos' => 'nullable|array',
@@ -106,7 +105,6 @@ class RolesController extends Controller
         try {
             $rol = Rol::create([
                 'nombre' => $validated['nombre'],
-                'nombre_mostrable' => $validated['nombre_mostrable'] ?? ucfirst(str_replace('_', ' ', $validated['nombre'])),
                 'descripcion' => $validated['descripcion'],
                 'nivel_jerarquico' => $validated['nivel_jerarquico'],
                 'es_sistema' => false,
@@ -165,9 +163,11 @@ class RolesController extends Controller
             abort(403, 'No tienes permisos para ver este rol');
         }
         
+        // Obtener módulos y permisos según nivel
+        $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
         $rol->load('permisos.modulo', 'usuarios');
         
-        return view('roles.show', compact('rol'));
+        return view('roles.show', compact('rol', 'modulos'));
     }
 
     /**
@@ -231,7 +231,6 @@ class RolesController extends Controller
         
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|regex:/^[a-z_]+$/|unique:roles,nombre,' . $rol->id,
-            'nombre_mostrable' => 'required|string|max:150',
             'descripcion' => 'nullable|string',
             'nivel_jerarquico' => 'required|integer|min:1|max:5',
             'permisos' => 'nullable|array',
@@ -258,7 +257,6 @@ class RolesController extends Controller
         try {
             $rol->update([
                 'nombre' => $validated['nombre'],
-                'nombre_mostrable' => $validated['nombre_mostrable'],
                 'descripcion' => $validated['descripcion'],
                 'nivel_jerarquico' => $validated['nivel_jerarquico'],
             ]);

@@ -244,7 +244,7 @@ class DashboardController extends Controller
             // TODO: Implementar tareas de cuentas por certificar
         ];
 
-        return view('dashboard.supervisor', compact(
+        return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
             'misContratos',
@@ -268,7 +268,7 @@ class DashboardController extends Controller
             // TODO: Cuentas pendientes de aprobación ejecutiva
         ];
 
-        return view('dashboard.ordenador-gasto', compact(
+        return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
             'tareasPendientes'
@@ -291,7 +291,7 @@ class DashboardController extends Controller
             // TODO: Órdenes de pago pendientes de ejecución
         ];
 
-        return view('dashboard.tesorero', compact(
+        return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
             'tareasPendientes'
@@ -303,7 +303,7 @@ class DashboardController extends Controller
      */
     private function dashboardFuncionarioGeneral($organizacion, $estadisticasComunes, $rolNombre)
     {
-        return view('dashboard.funcionario', compact(
+        return view('dashboard.organizacion', compact(
             'estadisticasComunes',
             'organizacion',
             'rolNombre'

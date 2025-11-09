@@ -16,7 +16,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h1 class="text-3xl font-bold text-gray-800 flex items-center">
-                                @switch($role->nombre)
+                                @switch($rol->nombre)
                                     @case('admin_global')
                                         <i class="fas fa-crown text-warning mr-3"></i>
                                         @break
@@ -38,7 +38,7 @@
                                     @default
                                         <i class="fas fa-users-cog text-primary mr-3"></i>
                                 @endswitch
-                                Detalles del Rol: {{ ucfirst(str_replace('_', ' ', $role->nombre)) }}
+                                Detalles del Rol: {{ ucfirst(str_replace('_', ' ', $rol->nombre)) }}
                             </h1>
                             <p class="text-secondary mt-1">
                                 Información completa y permisos asignados
@@ -50,8 +50,8 @@
                                 <i class="fas fa-arrow-left mr-2"></i>
                                 Volver
                             </a>
-                            @if(!$role->es_sistema)
-                            <a href="{{ route('roles.edit', $role) }}" 
+                            @if(!$rol->es_sistema)
+                            <a href="{{ route('roles.edit', $rol) }}" 
                                class="bg-gradient-to-r from-warning to-warning-dark text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all flex items-center">
                                 <i class="fas fa-edit mr-2"></i>
                                 Editar Rol
@@ -88,7 +88,7 @@
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">ID del Rol</label>
                                     <div class="flex items-center">
                                         <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-mono">
-                                            #{{ $role->id }}
+                                            #{{ $rol->id }}
                                         </span>
                                     </div>
                                 </div>
@@ -96,23 +96,23 @@
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">Nombre</label>
                                     <p class="text-lg font-semibold text-gray-800 capitalize">
-                                        {{ str_replace('_', ' ', $role->nombre) }}
+                                        {{ str_replace('_', ' ', $rol->nombre) }}
                                     </p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">Descripción</label>
-                                    <p class="text-gray-700">{{ $role->descripcion }}</p>
+                                    <p class="text-gray-700">{{ $rol->descripcion }}</p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">Nivel Jerárquico</label>
                                     <div class="flex items-center">
                                         <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-semibold">
-                                            Nivel {{ $role->nivel_jerarquico }}
+                                            Nivel {{ $rol->nivel_jerarquico }}
                                         </span>
                                         <span class="ml-2 text-xs text-gray-500">
-                                            @switch($role->nivel_jerarquico)
+                                            @switch($rol->nivel_jerarquico)
                                                 @case(1) (Administración Global) @break
                                                 @case(2) (Administración Organización) @break
                                                 @case(3) (Gestión Operativa) @break
@@ -125,7 +125,7 @@
 
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">Tipo</label>
-                                    @if($role->es_sistema)
+                                    @if($rol->es_sistema)
                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
                                         <i class="fas fa-cog mr-2"></i>
                                         Rol del Sistema
@@ -142,13 +142,13 @@
                                     <div>
                                         <label class="block text-sm font-semibold text-gray-600 mb-1">Usuarios</label>
                                         <span class="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm font-semibold">
-                                            {{ $role->usuarios_count ?? $role->usuarios->count() }} usuarios
+                                            {{ $rol->usuarios_count ?? $rol->usuarios->count() }} usuarios
                                         </span>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-semibold text-gray-600 mb-1">Permisos</label>
                                         <span class="bg-info/10 text-info px-3 py-1 rounded-full text-sm font-semibold">
-                                            {{ $role->permisos_count ?? $role->permisos->count() }} permisos
+                                            {{ $rol->permisos_count ?? $rol->permisos->count() }} permisos
                                         </span>
                                     </div>
                                 </div>
@@ -157,11 +157,11 @@
                                     <div class="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-1">Creado</label>
-                                            <p class="text-gray-700">{{ $role->created_at->format('d/m/Y H:i') }}</p>
+                                            <p class="text-gray-700">{{ $rol->created_at->format('d/m/Y H:i') }}</p>
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-1">Actualizado</label>
-                                            <p class="text-gray-700">{{ $role->updated_at->format('d/m/Y H:i') }}</p>
+                                            <p class="text-gray-700">{{ $rol->updated_at->format('d/m/Y H:i') }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -169,21 +169,21 @@
                         </div>
 
                         <!-- Acciones Rápidas -->
-                        @if(!$role->es_sistema)
+                        @if(!$rol->es_sistema)
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                                 <i class="fas fa-bolt text-warning mr-2"></i>
                                 Acciones
                             </h2>
                             <div class="space-y-3">
-                                <a href="{{ route('roles.edit', $role) }}" 
+                                <a href="{{ route('roles.edit', $rol) }}" 
                                    class="w-full bg-warning text-white font-semibold py-3 px-4 rounded-lg hover:bg-warning-dark transition-all flex items-center justify-center">
                                     <i class="fas fa-edit mr-2"></i>
                                     Editar Rol
                                 </a>
                                 
-                                @if($role->usuarios_count == 0)
-                                <form action="{{ route('roles.destroy', $role) }}" method="POST" class="w-full">
+                                @if($rol->usuarios_count == 0)
+                                <form action="{{ route('roles.destroy', $rol) }}" method="POST" class="w-full">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" 
@@ -215,16 +215,16 @@
                                     <i class="fas fa-key text-primary mr-2"></i>
                                     Permisos Asignados
                                     <span class="ml-2 bg-primary/10 text-primary px-2 py-1 rounded-full text-sm">
-                                        {{ $role->permisos_count ?? $role->permisos->count() }}
+                                        {{ $rol->permisos_count ?? $rol->permisos->count() }}
                                     </span>
                                 </h2>
                             </div>
 
-                            @if($role->permisos->count() > 0)
+                            @if($rol->permisos->count() > 0)
                             <div class="space-y-4">
                                 @foreach($modulos as $modulo)
                                 @php
-                                    $moduloPermisos = $role->permisos->where('modulo_id', $modulo->id);
+                                    $moduloPermisos = $rol->permisos->where('modulo_id', $modulo->id);
                                 @endphp
                                 @if($moduloPermisos->count() > 0)
                                 <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -259,8 +259,8 @@
                                 <i class="fas fa-key text-4xl text-gray-300 mb-3"></i>
                                 <p class="text-gray-500 font-medium">No hay permisos asignados</p>
                                 <p class="text-sm text-gray-400 mt-1">Este rol no tiene permisos específicos configurados</p>
-                                @if(!$role->es_sistema)
-                                <a href="{{ route('roles.edit', $role) }}" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg inline-flex items-center">
+                                @if(!$rol->es_sistema)
+                                <a href="{{ route('roles.edit', $rol) }}" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg inline-flex items-center">
                                     <i class="fas fa-edit mr-2"></i>
                                     Asignar Permisos
                                 </a>
@@ -276,12 +276,12 @@
                                     <i class="fas fa-users text-accent mr-2"></i>
                                     Usuarios con este Rol
                                     <span class="ml-2 bg-accent/10 text-accent px-2 py-1 rounded-full text-sm">
-                                        {{ $role->usuarios_count ?? $role->usuarios->count() }}
+                                        {{ $rol->usuarios_count ?? $rol->usuarios->count() }}
                                     </span>
                                 </h2>
                             </div>
 
-                            @if($role->usuarios->count() > 0)
+                            @if($rol->usuarios->count() > 0)
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead class="bg-gray-50 border-b border-gray-200">
@@ -293,7 +293,7 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200">
-                                        @foreach($role->usuarios as $usuario)
+                                        @foreach($rol->usuarios as $usuario)
                                         <tr class="hover:bg-gray-50 transition-colors">
                                             <td class="py-4 px-4">
                                                 <div class="flex items-center">

@@ -17,14 +17,14 @@
                         <div>
                             <h1 class="text-3xl font-bold text-gray-800 flex items-center">
                                 <i class="fas fa-edit text-warning mr-3"></i>
-                                Editar Rol: {{ ucfirst(str_replace('_', ' ', $role->nombre)) }}
+                                Editar Rol: {{ ucfirst(str_replace('_', ' ', $rol->nombre)) }}
                             </h1>
                             <p class="text-secondary mt-1">
                                 Modifica la información y permisos del rol
                             </p>
                         </div>
                         <div class="flex space-x-3">
-                            <a href="{{ route('roles.show', $role) }}" 
+                            <a href="{{ route('roles.show', $rol) }}" 
                                class="bg-gradient-to-r from-info to-info-dark text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all flex items-center">
                                 <i class="fas fa-eye mr-2"></i>
                                 Ver Detalles
@@ -67,14 +67,14 @@
                 @endif
 
                 <!-- Alerta de Usuarios Asignados -->
-                @if($role->usuarios->count() > 0)
+                @if($rol->usuarios->count() > 0)
                 <div class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 animate-fadeIn">
                     <div class="flex items-center">
                         <i class="fas fa-info-circle text-blue-500 text-xl mr-3"></i>
                         <div>
                             <h3 class="text-blue-800 font-semibold">Información Importante</h3>
                             <p class="text-blue-600 text-sm mt-1">
-                                Este rol tiene <strong>{{ $role->usuarios->count() }} usuario(s)</strong> asignado(s). 
+                                Este rol tiene <strong>{{ $rol->usuarios->count() }} usuario(s)</strong> asignado(s). 
                                 Los cambios que realices afectarán inmediatamente a todos los usuarios con este rol.
                             </p>
                         </div>
@@ -82,7 +82,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('roles.update', $role) }}" method="POST" id="editRoleForm">
+                <form action="{{ route('roles.update', $rol) }}" method="POST" id="editRoleForm">
                     @csrf
                     @method('PUT')
                     
@@ -100,7 +100,7 @@
                                     <label class="block text-sm font-semibold text-gray-600 mb-1">ID del Rol</label>
                                     <div class="flex items-center">
                                         <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-mono">
-                                            #{{ $role->id }}
+                                            #{{ $rol->id }}
                                         </span>
                                     </div>
                                 </div>
@@ -113,7 +113,7 @@
                                     <input type="text" 
                                            id="nombre"
                                            name="nombre" 
-                                           value="{{ old('nombre', $role->nombre) }}"
+                                           value="{{ old('nombre', $rol->nombre) }}"
                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
                                            placeholder="Ej: coordinador_contratos"
                                            required
@@ -135,7 +135,7 @@
                                               rows="4"
                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
                                               placeholder="Describe las funciones y responsabilidades de este rol..."
-                                              required>{{ old('descripcion', $role->descripcion) }}</textarea>
+                                              required>{{ old('descripcion', $rol->descripcion) }}</textarea>
                                 </div>
 
                                 <!-- Nivel Jerárquico -->
@@ -148,11 +148,11 @@
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
                                             required>
                                         <option value="">Seleccione un nivel</option>
-                                        <option value="1" {{ old('nivel_jerarquico', $role->nivel_jerarquico) == 1 ? 'selected' : '' }}>Nivel 1 - Administración Global</option>
-                                        <option value="2" {{ old('nivel_jerarquico', $role->nivel_jerarquico) == 2 ? 'selected' : '' }}>Nivel 2 - Administración Organización</option>
-                                        <option value="3" {{ old('nivel_jerarquico', $role->nivel_jerarquico) == 3 ? 'selected' : '' }}>Nivel 3 - Gestión Operativa</option>
-                                        <option value="4" {{ old('nivel_jerarquico', $role->nivel_jerarquico) == 4 ? 'selected' : '' }}>Nivel 4 - Usuarios Especializados</option>
-                                        <option value="5" {{ old('nivel_jerarquico', $role->nivel_jerarquico) == 5 ? 'selected' : '' }}>Nivel 5 - Usuarios Básicos</option>
+                                        <option value="1" {{ old('nivel_jerarquico', $rol->nivel_jerarquico) == 1 ? 'selected' : '' }}>Nivel 1 - Administración Global</option>
+                                        <option value="2" {{ old('nivel_jerarquico', $rol->nivel_jerarquico) == 2 ? 'selected' : '' }}>Nivel 2 - Administración Organización</option>
+                                        <option value="3" {{ old('nivel_jerarquico', $rol->nivel_jerarquico) == 3 ? 'selected' : '' }}>Nivel 3 - Gestión Operativa</option>
+                                        <option value="4" {{ old('nivel_jerarquico', $rol->nivel_jerarquico) == 4 ? 'selected' : '' }}>Nivel 4 - Usuarios Especializados</option>
+                                        <option value="5" {{ old('nivel_jerarquico', $rol->nivel_jerarquico) == 5 ? 'selected' : '' }}>Nivel 5 - Usuarios Básicos</option>
                                     </select>
                                 </div>
 
@@ -166,19 +166,19 @@
                                         <div class="flex justify-between items-center">
                                             <span class="text-sm text-gray-600">Permisos seleccionados:</span>
                                             <span class="bg-primary text-white text-xs font-bold px-2 py-1 rounded-full" id="selectedCount">
-                                                {{ $role->permisos->count() }}
+                                                {{ $rol->permisos->count() }}
                                             </span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-sm text-gray-600">Módulos con permisos:</span>
                                             <span class="bg-accent text-white text-xs font-bold px-2 py-1 rounded-full" id="modulesCount">
-                                                {{ $role->permisos->groupBy('modulo_id')->count() }}
+                                                {{ $rol->permisos->groupBy('modulo_id')->count() }}
                                             </span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="text-sm text-gray-600">Usuarios afectados:</span>
                                             <span class="bg-warning text-white text-xs font-bold px-2 py-1 rounded-full">
-                                                {{ $role->usuarios->count() }}
+                                                {{ $rol->usuarios->count() }}
                                             </span>
                                         </div>
                                     </div>
@@ -189,11 +189,11 @@
                                     <div class="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-1">Creado</label>
-                                            <p class="text-gray-700">{{ $role->created_at->format('d/m/Y H:i') }}</p>
+                                            <p class="text-gray-700">{{ $rol->created_at->format('d/m/Y H:i') }}</p>
                                         </div>
                                         <div>
                                             <label class="block text-xs text-gray-500 mb-1">Actualizado</label>
-                                            <p class="text-gray-700">{{ $role->updated_at->format('d/m/Y H:i') }}</p>
+                                            <p class="text-gray-700">{{ $rol->updated_at->format('d/m/Y H:i') }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -234,7 +234,7 @@
                                                     {{ $modulo->nombre }}
                                                     <span class="ml-2 bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs module-count" 
                                                           id="count-modulo-{{ $modulo->id }}">
-                                                        {{ $role->permisos->where('modulo_id', $modulo->id)->count() }} seleccionados
+                                                        {{ $rol->permisos->where('modulo_id', $modulo->id)->count() }} seleccionados
                                                     </span>
                                                 </h3>
                                                 <button type="button" 
@@ -254,7 +254,7 @@
                                                 <input type="checkbox" 
                                                        name="permisos[]" 
                                                        value="{{ $permiso->id }}"
-                                                       {{ in_array($permiso->id, old('permisos', $role->permisos->pluck('id')->toArray())) ? 'checked' : '' }}
+                                                       {{ in_array($permiso->id, old('permisos', $rol->permisos->pluck('id')->toArray())) ? 'checked' : '' }}
                                                        class="mt-1 text-primary focus:ring-primary border-gray-300 rounded permission-checkbox module-{{ $modulo->id }}"
                                                        onchange="updatePermissionCount()"
                                                        data-modulo="{{ $modulo->id }}">
@@ -275,10 +275,10 @@
                                     <div class="flex justify-between items-center">
                                         <div class="text-sm text-gray-600 flex items-center">
                                             <i class="fas fa-info-circle mr-2"></i>
-                                            Los cambios afectarán a {{ $role->usuarios->count() }} usuario(s) inmediatamente
+                                            Los cambios afectarán a {{ $rol->usuarios->count() }} usuario(s) inmediatamente
                                         </div>
                                         <div class="flex space-x-3">
-                                            <a href="{{ route('roles.show', $role) }}" 
+                                            <a href="{{ route('roles.show', $rol) }}" 
                                                class="bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors flex items-center">
                                                 <i class="fas fa-times mr-2"></i>
                                                 Cancelar
@@ -355,7 +355,7 @@
 
     // Confirmación antes de enviar el formulario
     document.getElementById('editRoleForm').addEventListener('submit', function(e) {
-        const userCount = {{ $role->usuarios->count() }};
+        const userCount = {{ $rol->usuarios->count() }};
         if (userCount > 0) {
             if (!confirm(`⚠️ Este rol tiene ${userCount} usuario(s) asignado(s). Los cambios afectarán inmediatamente a todos ellos. ¿Continuar?`)) {
                 e.preventDefault();

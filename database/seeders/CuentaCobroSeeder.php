@@ -7,7 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\CuentaCobro;
 use App\Models\ItemCuentaCobro;
 use App\Models\Contrato;
-use App\Models\User;
+use App\Models\Usuario as User;
 
 class CuentaCobroSeeder extends Seeder
 {
