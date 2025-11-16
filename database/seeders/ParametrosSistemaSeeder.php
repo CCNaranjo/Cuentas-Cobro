@@ -43,7 +43,7 @@ class ParametrosSistemaSeeder extends Seeder
                 'descripcion' => 'Habilitar validación de Planilla Integrada de Liquidación de Aportes (PILA)',
                 'es_cifrado' => false,
             ],
-            
+
             // ============ SEGURIDAD ============
             [
                 'clave' => 'min_longitud_contrasena',
@@ -101,7 +101,7 @@ class ParametrosSistemaSeeder extends Seeder
                 'descripcion' => 'Intentos máximos de login antes de bloquear la cuenta',
                 'es_cifrado' => false,
             ],
-            
+
             // ============ FLUJO DE TRABAJO ============
             [
                 'clave' => 'dias_maximos_certificacion',
@@ -119,7 +119,7 @@ class ParametrosSistemaSeeder extends Seeder
                 'descripcion' => 'Días límite para que un ordenador de gasto revise una cuenta radicada',
                 'es_cifrado' => false,
             ],
-            
+
             // ============ FINANCIERO POR DEFECTO ============
             [
                 'clave' => 'porcentaje_iva_default',
@@ -137,7 +137,7 @@ class ParametrosSistemaSeeder extends Seeder
                 'descripcion' => 'Tasa de retención general por defecto (puede ser sobrescrita localmente) (%)',
                 'es_cifrado' => false,
             ],
-            
+
             // ============ PLATAFORMA ============
             [
                 'clave' => 'version_actual_sistema',

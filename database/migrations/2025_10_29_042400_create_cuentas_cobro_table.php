@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('cuentas_cobro', function (Blueprint $table) {
@@ -29,7 +28,7 @@ return new class extends Migration
             $table->text('observaciones')->nullable();
             $table->foreignId('created_by')->constrained('usuarios')->onDelete('cascade');
             $table->timestamps();
-            
+
             $table->index('numero_cuenta_cobro');
             $table->index(['contrato_id', 'estado']);
             $table->index('fecha_radicacion');
@@ -41,4 +40,3 @@ return new class extends Migration
         Schema::dropIfExists('cuentas_cobro');
     }
 };
-

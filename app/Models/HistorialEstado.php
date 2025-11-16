@@ -20,7 +20,7 @@ class HistorialEstado extends Model
     ];
 
     // ==================== RELACIONES ====================
-    
+
     public function cuentaCobro()
     {
         return $this->belongsTo(CuentaCobro::class, 'cuenta_cobro_id');
@@ -32,7 +32,7 @@ class HistorialEstado extends Model
     }
 
     // ==================== ACCESSORS ====================
-    
+
     public function getEstadoAnteriorNombreAttribute()
     {
         return $this->getNombreEstado($this->estado_anterior);

@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\CuentaCobroController;
 
-
 // REGISTRO MANUAL DE MIDDLEWERS - SOLUCIÓN TEMPORAL
 app('router')->aliasMiddleware('verificar.permiso', VerificarPermiso::class);
 app('router')->aliasMiddleware('verificar.acceso.organizacion', VerificarAccesoOrganizacion::class);
@@ -111,9 +110,9 @@ Route::middleware(['auth'])->group(function () {
                 ->name('usuarios.pendientes');
             Route::post('/asignar-rol', [UsuarioController::class, 'asignarRol'])
                 ->middleware(VerificarPermiso::class . ':asignar-rol')
-                ->name('usuarios.asignar-rol');            
+                ->name('usuarios.asignar-rol');
             Route::post('/{id}/rechazar', [UsuarioController::class, 'rechazarVinculacion'])
-                ->name('usuarios.rechazar');            
+                ->name('usuarios.rechazar');
             Route::post('/{id}/cambiar-estado', [UsuarioController::class, 'cambiarEstado'])
                 ->middleware(VerificarPermiso::class . ':cambiar-estado-usuario')
                 ->name('usuarios.cambiar-estado');
@@ -125,47 +124,47 @@ Route::middleware(['auth'])->group(function () {
                 ->name('usuarios.edit');
             Route::put('/{id}', [UsuarioController::class, 'update'])
                 ->middleware(VerificarPermiso::class . ':editar-usuario')
-                ->name('usuarios.update');            
+                ->name('usuarios.update');
             Route::get('/{id}', [UsuarioController::class, 'show'])
                 ->name('usuarios.show');
         });
 
-// ============================================
-// GESTIÓN DE ROLES Y PERMISOS
-// ============================================
+    // ============================================
+    // GESTIÓN DE ROLES Y PERMISOS
+    // ============================================
 
-// Index - Nivel 1, 2 y 3 pueden ver
-Route::middleware([VerificarPermiso::class . ':ver-roles'])
-    ->get('/roles', [RolesController::class, 'index'])
-    ->name('roles.index');
+    // Index - Nivel 1, 2 y 3 pueden ver
+    Route::middleware([VerificarPermiso::class . ':ver-roles'])
+        ->get('/roles', [RolesController::class, 'index'])
+        ->name('roles.index');
 
-// Crear - Nivel 1 y 2
-Route::middleware([VerificarPermiso::class . ':crear-rol'])
-    ->group(function () {
-        Route::get('/roles/create', [RolesController::class, 'create'])
-            ->name('roles.create');
-        Route::post('/roles', [RolesController::class, 'store'])
-            ->name('roles.store');
-    });
+    // Crear - Nivel 1 y 2
+    Route::middleware([VerificarPermiso::class . ':crear-rol'])
+        ->group(function () {
+            Route::get('/roles/create', [RolesController::class, 'create'])
+                ->name('roles.create');
+            Route::post('/roles', [RolesController::class, 'store'])
+                ->name('roles.store');
+        });
 
-// Ver - Nivel 1, 2 y 3
-Route::middleware([VerificarPermiso::class . ':ver-roles'])
-    ->get('/roles/{rol}', [RolesController::class, 'show'])
-    ->name('roles.show');
+    // Ver - Nivel 1, 2 y 3
+    Route::middleware([VerificarPermiso::class . ':ver-roles'])
+        ->get('/roles/{rol}', [RolesController::class, 'show'])
+        ->name('roles.show');
 
-// Editar - Nivel 1 y 2
-Route::middleware([VerificarPermiso::class . ':asignar-permisos-rol'])
-    ->group(function () {
-        Route::get('/roles/{rol}/edit', [RolesController::class, 'edit'])
-            ->name('roles.edit');
-        Route::put('/roles/{rol}', [RolesController::class, 'update'])
-            ->name('roles.update');
-    });
+    // Editar - Nivel 1 y 2
+    Route::middleware([VerificarPermiso::class . ':asignar-permisos-rol'])
+        ->group(function () {
+            Route::get('/roles/{rol}/edit', [RolesController::class, 'edit'])
+                ->name('roles.edit');
+            Route::put('/roles/{rol}', [RolesController::class, 'update'])
+                ->name('roles.update');
+        });
 
-// Eliminar - Solo Nivel 1
-Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
-    ->delete('/roles/{rol}', [RolesController::class, 'destroy'])
-    ->name('roles.destroy');
+    // Eliminar - Solo Nivel 1
+    Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
+        ->delete('/roles/{rol}', [RolesController::class, 'destroy'])
+        ->name('roles.destroy');
 
     // ============================================
     // CONTRATOS
@@ -188,7 +187,7 @@ Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
                 // Descargar archivo (debe ir antes de la ruta con {archivo})
                 Route::get('/{archivo}/descargar', [ContratoController::class, 'descargarArchivo'])
                     ->name('contratos.archivos.descargar');
-                
+
                 // Eliminar archivo
                 Route::delete('/{archivo}', [ContratoController::class, 'eliminarArchivo'])
                     ->middleware('verificar.permiso:eliminar-archivo-contrato')
@@ -227,18 +226,18 @@ Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
 
             Route::get('/{contrato}', [ContratoController::class, 'show'])
                 ->name('contratos.show');
-                
+
             Route::put('/{contrato}', [ContratoController::class, 'update'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.update');
         });
 
     // ========== RUTAS DE CONFIGURACIÓN ==========
-    
+
     // Ruta principal (redirige según rol)
     Route::get('/configuracion', [ConfiguracionController::class, 'index'])
         ->name('configuracion.index');
-    
+
     // Configuración Global (Solo Admin Global)
     Route::middleware([VerificarAdminGlobal::class])->group(function () {
         Route::get('/configuracion/global', [ConfiguracionController::class, 'global'])
@@ -248,7 +247,7 @@ Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
         Route::get('/configuracion/exportar-logs', [ConfiguracionController::class, 'exportarLogs'])
             ->name('configuracion.exportar-logs');
     });
-    
+
     // Configuración de Organización (Admin Organización)
     Route::middleware([VerificarAccesoOrganizacion::class])->group(function () {
         Route::get('/configuracion/organizacion', [ConfiguracionController::class, 'organizacion'])
@@ -281,17 +280,51 @@ Route::get('/welcome', function () {
 
 // Rutas para la gestión de cuentas de cobro
 Route::middleware(['auth'])->group(function () {
-    
-    // CRUD completo
-    Route::resource('cuentas-cobro', CuentaCobroController::class);
-    
-    // Rutas adicionales
-    Route::post('cuentas-cobro/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
-        ->name('cuentas-cobro.cambiar-estado');
-    
-    Route::post('cuentas-cobro/{id}/documentos', [CuentaCobroController::class, 'subirDocumento'])
-        ->name('cuentas-cobro.subir-documento');
-    
-    Route::delete('cuentas-cobro/{id}/documentos/{documentoId}', [CuentaCobroController::class, 'eliminarDocumento'])
-        ->name('cuentas-cobro.eliminar-documento');
+
+    // ============================================
+    // CUENTAS DE COBRO
+    // ============================================
+    Route::prefix('cuentas-cobro')->group(function () {
+        // CRUD básico
+        Route::get('/', [CuentaCobroController::class, 'index'])
+            ->name('cuentas-cobro.index');
+
+        Route::get('/create', [CuentaCobroController::class, 'create'])
+            ->name('cuentas-cobro.create');
+
+        Route::post('/', [CuentaCobroController::class, 'store'])
+            ->name('cuentas-cobro.store');
+
+        Route::get('/{id}', [CuentaCobroController::class, 'show'])
+            ->name('cuentas-cobro.show');
+
+        Route::get('/{id}/edit', [CuentaCobroController::class, 'edit'])
+            ->name('cuentas-cobro.edit');
+
+        Route::put('/{id}', [CuentaCobroController::class, 'update'])
+            ->name('cuentas-cobro.update');
+
+        Route::delete('/{id}', [CuentaCobroController::class, 'destroy'])
+            ->name('cuentas-cobro.destroy');
+
+        // Cambiar estado
+        Route::post('/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
+            ->name('cuentas-cobro.cambiar-estado');
+
+        // ============================================
+        // GESTIÓN DE ARCHIVOS FTP
+        // ============================================
+
+        // Subir archivo
+        Route::post('/{id}/archivos', [CuentaCobroController::class, 'subirArchivo'])
+            ->name('cuentas-cobro.archivos.subir');
+
+        // Descargar archivo
+        Route::get('/archivos/{archivoId}/descargar', [CuentaCobroController::class, 'descargarArchivo'])
+            ->name('cuentas-cobro.archivos.descargar');
+
+        // Eliminar archivo
+        Route::delete('/{id}/archivos/{archivoId}', [CuentaCobroController::class, 'eliminarArchivo'])
+            ->name('cuentas-cobro.archivos.eliminar');
+    });
 });

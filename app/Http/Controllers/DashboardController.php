@@ -17,7 +17,7 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        /** @var \App\Models\Usuario $user */ 
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
 
         // 1. ADMIN GLOBAL - Dashboard Global
@@ -27,11 +27,11 @@ class DashboardController extends Controller
 
         // 2. Verificar si tiene organización activa
         $organizacionId = session('organizacion_actual');
-        
+
         if (!$organizacionId) {
             // Si no tiene organización, buscar la primera vinculada
             $primeraOrg = $user->organizacionesVinculadas()->first();
-            
+
             if ($primeraOrg) {
                 session(['organizacion_actual' => $primeraOrg->id]);
                 $organizacionId = $primeraOrg->id;
@@ -71,23 +71,23 @@ class DashboardController extends Controller
             'total_organizaciones' => Organizacion::count(),
             'organizaciones_activas' => Organizacion::where('estado', 'activa')->count(),
             'organizaciones_por_expirar' => 0, // TODO: Implementar cuando haya licencias
-            
+
             // Usuarios
             'total_usuarios' => Usuario::count(),
             'usuarios_activos' => Usuario::where('estado', 'activo')->count(),
             'usuarios_nuevos_mes' => Usuario::whereMonth('created_at', now()->month)->count(),
-            
+
             // Contratos
             'total_contratos' => Contrato::count(),
             'contratos_activos' => Contrato::where('estado', 'activo')->count(),
             'contratos_vencidos' => Contrato::where('estado', 'activo')
                 ->where('fecha_fin', '<', now())
                 ->count(),
-            
+
             // Volumen de Transacciones (Placeholder para Cuentas de Cobro)
             'monto_total_radicado' => 0, // TODO: Sumar cuentas radicadas
             'monto_total_pagado' => 0, // TODO: Sumar cuentas pagadas
-            
+
             // Valor Total de Contratos
             'valor_total_contratos' => Contrato::sum('valor_total'),
             'valor_contratos_activos' => Contrato::where('estado', 'activo')->sum('valor_total'),
@@ -95,7 +95,7 @@ class DashboardController extends Controller
 
         // Organizaciones Críticas (más contratos activos)
         $organizacionesCriticas = Organizacion::withCount([
-                'contratos' => function($query) {
+                'contratos' => function ($query) {
                     $query->where('estado', 'activo');
                 }
             ])
@@ -138,7 +138,7 @@ class DashboardController extends Controller
     private function dashboardOrganizacion($organizacionId, $rolNombre, $userId)
     {
         $organizacion = Organizacion::with(['usuarios', 'contratos'])->findOrFail($organizacionId);
-        
+
         // KPIs Comunes
         $estadisticasComunes = [
             'usuarios_activos' => $organizacion->usuarios()
@@ -156,16 +156,16 @@ class DashboardController extends Controller
         switch ($rolNombre) {
             case 'admin_organizacion':
                 return $this->dashboardAdminOrganizacion($organizacion, $estadisticasComunes);
-            
+
             case 'supervisor':
                 return $this->dashboardSupervisor($organizacion, $estadisticasComunes, $userId);
-            
+
             case 'ordenador_gasto':
                 return $this->dashboardOrdenadorGasto($organizacion, $estadisticasComunes);
-            
+
             case 'tesorero':
                 return $this->dashboardTesorero($organizacion, $estadisticasComunes);
-            
+
             default:
                 return $this->dashboardFuncionarioGeneral($organizacion, $estadisticasComunes, $rolNombre);
         }
@@ -338,7 +338,7 @@ class DashboardController extends Controller
             ->get();
 
         // Contratos listos para crear cuenta de cobro
-        $contratosListosParaCobro = $misContratos->filter(function($contrato) {
+        $contratosListosParaCobro = $misContratos->filter(function ($contrato) {
             // TODO: Verificar si puede crear cuenta según el contrato
             return $contrato->estado === 'activo';
         });
@@ -369,7 +369,7 @@ class DashboardController extends Controller
     private function dashboardSinVinculacion()
     {
         $user = Auth::user();
-        
+
         // Verificar si tiene vinculaciones pendientes
         $vinculacionesPendientes = VinculacionPendiente::where('usuario_id', $user->id)
             ->where('estado', 'pendiente')

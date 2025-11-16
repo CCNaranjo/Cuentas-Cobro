@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Contrato extends Model
 {
-   use HasFactory;
+    use HasFactory;
 
     protected $table = 'contratos';
 
@@ -83,13 +83,15 @@ class Contrato extends Model
 
     public function porcentajeEjecucion()
     {
-        if ($this->valor_total == 0) return 0;
+        if ($this->valor_total == 0) {
+            return 0;
+        }
         return ($this->valorCobrado() / $this->valor_total) * 100;
     }
 
     public function estaActivo()
     {
-        return $this->estado === 'activo' && 
+        return $this->estado === 'activo' &&
                now()->between($this->fecha_inicio, $this->fecha_fin);
     }
 
@@ -102,5 +104,5 @@ class Contrato extends Model
     public function scopeVigentes($query)
     {
         return $query->where('fecha_fin', '>=', now());
-    } 
+    }
 }

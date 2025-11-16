@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 class OrganizacionConfiguracion extends Model
 {
     protected $table = 'organizacion_configuracion';
-    
+
     protected $fillable = [
         'organizacion_id',
         // Branding
@@ -36,7 +36,7 @@ class OrganizacionConfiguracion extends Model
         'requerir_paz_salvo_contratistas',
         'habilitar_aprobacion_multiple',
     ];
-    
+
     protected $casts = [
         'vigencia_fiscal_fecha_inicio' => 'date',
         'vigencia_fiscal_fecha_fin' => 'date',
@@ -47,7 +47,7 @@ class OrganizacionConfiguracion extends Model
         'requerir_paz_salvo_contratistas' => 'boolean',
         'habilitar_aprobacion_multiple' => 'boolean',
     ];
-    
+
     /**
      * Relación con Organización
      */
@@ -55,7 +55,7 @@ class OrganizacionConfiguracion extends Model
     {
         return $this->belongsTo(Organizacion::class);
     }
-    
+
     /**
      * Obtener configuración de una organización (con caché)
      */
@@ -65,21 +65,21 @@ class OrganizacionConfiguracion extends Model
             return self::where('organizacion_id', $organizacionId)->first();
         });
     }
-    
+
     /**
      * Obtener un parámetro específico de una organización
      */
     public static function obtenerParametro(int $organizacionId, string $parametro, $default = null)
     {
         $config = self::obtenerPorOrganizacion($organizacionId);
-        
+
         if (!$config) {
             return $default;
         }
-        
+
         return $config->$parametro ?? $default;
     }
-    
+
     /**
      * Limpiar caché de una organización
      */
@@ -87,7 +87,7 @@ class OrganizacionConfiguracion extends Model
     {
         Cache::forget("org_config_{$organizacionId}");
     }
-    
+
     /**
      * Calcular retenciones para un monto dado
      */
@@ -96,7 +96,7 @@ class OrganizacionConfiguracion extends Model
         $montoICA = $valorBruto * ($this->porcentaje_retencion_ica / 100);
         $montoFuente = $valorBruto * ($this->porcentaje_retencion_fuente / 100);
         $valorNeto = $valorBruto - $montoICA - $montoFuente;
-        
+
         return [
             'valor_bruto' => $valorBruto,
             'retencion_ica' => [
@@ -111,7 +111,7 @@ class OrganizacionConfiguracion extends Model
             'valor_neto' => round($valorNeto, 2),
         ];
     }
-    
+
     /**
      * Verificar si un monto requiere doble aprobación
      */
@@ -120,10 +120,10 @@ class OrganizacionConfiguracion extends Model
         if (!$this->habilitar_aprobacion_multiple) {
             return false;
         }
-        
+
         return $monto >= $this->umbral_validacion_doble_monto;
     }
-    
+
     /**
      * Obtener correos de notificación de tesorería como array
      */
@@ -132,7 +132,7 @@ class OrganizacionConfiguracion extends Model
         if (empty($this->correo_notificacion_tesoreria)) {
             return [];
         }
-        
+
         return array_map('trim', explode(',', $this->correo_notificacion_tesoreria));
     }
 }

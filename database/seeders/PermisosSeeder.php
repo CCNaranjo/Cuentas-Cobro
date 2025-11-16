@@ -18,7 +18,7 @@ class PermisosSeeder extends Seeder
             // ============================================
             ['nombre' => 'Ver dashboard', 'slug' => 'ver-dashboard', 'descripcion' => 'Acceso al dashboard principal', 'modulo_id' => 1],
             ['nombre' => 'Ver estadísticas globales', 'slug' => 'ver-estadisticas-globales', 'descripcion' => 'Ver métricas del sistema', 'modulo_id' => 1],
-            
+
             // ============================================
             // ORGANIZACIONES (modulo_id: 2)
             // ============================================
@@ -27,7 +27,7 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Editar organización', 'slug' => 'editar-organizacion', 'descripcion' => 'Modificar organizaciones', 'modulo_id' => 2],
             ['nombre' => 'Eliminar organización', 'slug' => 'eliminar-organizacion', 'descripcion' => 'Eliminar organizaciones', 'modulo_id' => 2],
             ['nombre' => 'Asignar admin organización', 'slug' => 'asignar-admin-organizacion', 'descripcion' => 'Asignar administradores', 'modulo_id' => 2],
-            
+
             // ============================================
             // USUARIOS (modulo_id: 3)
             // ============================================
@@ -38,7 +38,7 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Eliminar usuario', 'slug' => 'eliminar-usuario', 'descripcion' => 'Eliminar usuarios', 'modulo_id' => 3],
             ['nombre' => 'Cambiar estado usuario', 'slug' => 'cambiar-estado-usuario', 'descripcion' => 'Activar/desactivar usuarios', 'modulo_id' => 3],
             ['nombre' => 'Gestionar usuarios', 'slug' => 'gestionar-usuarios', 'descripcion' => 'Administración completa de usuarios', 'modulo_id' => 3],
-            
+
             // ============================================
             // Roles (modulo_id: 4)
             // ============================================
@@ -63,7 +63,7 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Gestionar contratos', 'slug' => 'gestionar-contratos', 'descripcion' => 'Administración completa de contratos', 'modulo_id' => 5],
             ['nombre' => 'Validación de contratos', 'slug' => 'validar-contratos', 'descripcion' => 'Validar contratos', 'modulo_id' => 5],
             ['nombre' => 'Gestionar contratistas', 'slug' => 'gestionar-contratista', 'descripcion' => 'Administrar contratistas', 'modulo_id' => 5],
-            
+
             // ============================================
             // CUENTAS DE COBRO (modulo_id: 6)
             // ============================================
@@ -79,13 +79,13 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Anular cuenta cobro', 'slug' => 'anular-cuenta-cobro', 'descripcion' => 'Anular cuentas de cobro', 'modulo_id' => 6],
             ['nombre' => 'Ver historial cuenta', 'slug' => 'ver-historial-cuenta', 'descripcion' => 'Ver historial de cambios', 'modulo_id' => 6],
             ['nombre' => 'Aprobación final', 'slug' => 'aprovar-finalmente', 'descripcion' => 'Aprobación ejecutiva final', 'modulo_id' => 6],
-            
+
             // ============================================
             // DOCUMENTOS
             // ============================================
             ['nombre' => 'Subir documentos', 'slug' => 'cargar-documentos', 'descripcion' => 'Cargar archivos al sistema', 'modulo_id' => 6],
             ['nombre' => 'Ver documentos', 'slug' => 'ver-documentos', 'descripcion' => 'Consultar documentos', 'modulo_id' => 6],
-            
+
             // ============================================
             // PAGOS
             // ============================================
@@ -95,14 +95,14 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Transferencias bancarias', 'slug' => 'transferir-banco', 'descripcion' => 'Realizar transferencias', 'modulo_id' => 6],
             ['nombre' => 'Confirmación de pagos', 'slug' => 'confirmar-pagos', 'descripcion' => 'Confirmar pagos', 'modulo_id' => 6],
             ['nombre' => 'Generar órdenes de pago', 'slug' => 'generar-ordenes-pago', 'descripcion' => 'Crear órdenes de pago', 'modulo_id' => 6],
-            
+
             // ============================================
             // PRESUPUESTO
             // ============================================
             ['nombre' => 'Ver presupuesto', 'slug' => 'ver-presupuesto', 'descripcion' => 'Consultar presupuesto', 'modulo_id' => 7],
             ['nombre' => 'Gestionar presupuesto', 'slug' => 'gestionar-presupuesto', 'descripcion' => 'Administrar presupuesto', 'modulo_id' => 7],
             ['nombre' => 'Aprobacion Final', 'slug' => 'aprobacion-final', 'descripcion' => 'Consultar presupuesto', 'modulo_id' => 7],
-            
+
             // ============================================
             // REPORTES (modulo_id: 7)
             // ============================================
@@ -111,13 +111,13 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Ver reportes financieros', 'slug' => 'ver-reportes-financieros', 'descripcion' => 'Reportes contables', 'modulo_id' => 7],
             ['nombre' => 'Exportar reportes', 'slug' => 'exportar-reportes', 'descripcion' => 'Descargar reportes', 'modulo_id' => 7],
             ['nombre' => 'Ver reportes de contratos', 'slug' => 'ver-reportes-contratos', 'descripcion' => 'Ver informes de contratos', 'modulo_id' => 7],
-            
+
             // ============================================
             // OTROS
             // ============================================
             ['nombre' => 'Agregar comentarios', 'slug' => 'agregar-comentarios', 'descripcion' => 'Comentar en registros', 'modulo_id' => 8],
             ['nombre' => 'Solicitar correcciones', 'slug' => 'solicitar-correcciones', 'descripcion' => 'Pedir modificaciones', 'modulo_id' => 8],
-            
+
             // ============================================
             // CONFIGURACIÓN (modulo_id: 8)
             // ============================================

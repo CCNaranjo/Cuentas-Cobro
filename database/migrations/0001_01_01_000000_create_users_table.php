@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -21,14 +20,14 @@ return new class extends Migration
             $table->string('direccion')->nullable();
             $table->string('documento_identidad')->unique()->nullable();
             $table->enum('tipo_vinculacion', [
-                'global_admin', 
-                'organizacion', 
-                'contratista', 
+                'global_admin',
+                'organizacion',
+                'contratista',
                 'sin_vinculacion'
             ])->default('sin_vinculacion');
             $table->enum('estado', [
-                'activo', 
-                'inactivo', 
+                'activo',
+                'inactivo',
                 'pendiente_verificacion',
                 'suspendido'
             ])->default('pendiente_verificacion');

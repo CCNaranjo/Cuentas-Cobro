@@ -32,7 +32,7 @@ class CuentaCobro extends Model
     ];
 
     // ==================== RELACIONES ====================
-    
+
     public function contrato()
     {
         return $this->belongsTo(Contrato::class, 'contrato_id');
@@ -48,6 +48,13 @@ class CuentaCobro extends Model
         return $this->hasMany(ItemCuentaCobro::class, 'cuenta_cobro_id');
     }
 
+    // NUEVA RELACIÓN PARA ARCHIVOS FTP
+    public function archivos()
+    {
+        return $this->hasMany(CuentaCobroArchivo::class, 'cuenta_cobro_id');
+    }
+
+    // Mantener compatibilidad con DocumentoSoporte (opcional)
     public function documentos()
     {
         return $this->hasMany(DocumentoSoporte::class, 'cuenta_cobro_id');
@@ -60,7 +67,7 @@ class CuentaCobro extends Model
     }
 
     // ==================== MÉTODOS AUXILIARES ====================
-    
+
     public function calcularRetenciones()
     {
         $contrato = $this->contrato;
@@ -79,7 +86,7 @@ class CuentaCobro extends Model
         $retenciones['total'] = round($totalRetenciones, 2);
 
         $this->retenciones_calculadas = $retenciones;
-        $this->valor_neto = round($this->valor_bruto - $totalRetenciones, 2);
+        $this->valor_neto = (string)round($this->valor_bruto - $totalRetenciones, 2);
         $this->save();
 
         return $retenciones;
@@ -88,9 +95,9 @@ class CuentaCobro extends Model
     public function cambiarEstado($nuevoEstado, $usuarioId, $comentario = null)
     {
         $estadoAnterior = $this->estado;
-        
+
         if ($estadoAnterior === $nuevoEstado) {
-            return false; // No cambiar si es el mismo estado
+            return false;
         }
 
         $this->estado = $nuevoEstado;
@@ -131,7 +138,7 @@ class CuentaCobro extends Model
     }
 
     // ==================== SCOPES ====================
-    
+
     public function scopeBorradores($query)
     {
         return $query->where('estado', 'borrador');
@@ -173,7 +180,7 @@ class CuentaCobro extends Model
     }
 
     // ==================== ACCESSORS ====================
-    
+
     public function getEstadoNombreAttribute()
     {
         $estados = [

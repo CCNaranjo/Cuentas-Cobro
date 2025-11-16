@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -26,12 +25,12 @@ return new class extends Migration
             $table->enum('estado', ['activa', 'inactiva'])->default('activa');
             $table->foreignId('admin_global_id')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->timestamps();
-            
+
             $table->index('codigo_vinculacion');
             $table->index('nit');
         });
 
-        
+
         Schema::create('vinculaciones_pendientes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('usuario_id')->constrained('usuarios')->onDelete('cascade');
@@ -41,7 +40,7 @@ return new class extends Migration
             $table->string('token_verificacion')->nullable();
             $table->timestamp('expira_en')->nullable();
             $table->timestamps();
-            
+
             $table->index(['usuario_id', 'organizacion_id', 'estado']);
         });
 
@@ -59,14 +58,14 @@ return new class extends Migration
             $table->decimal('porcentaje_estampilla', 5, 2)->default(0);
             $table->enum('estado', [
                 'borrador',
-                'activo', 
-                'terminado', 
+                'activo',
+                'terminado',
                 'suspendido',
                 'liquidado'
             ])->default('borrador');
             $table->foreignId('vinculado_por')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->timestamps();
-            
+
             $table->index('numero_contrato');
             $table->index(['organizacion_id', 'estado']);
             $table->index('contratista_id');

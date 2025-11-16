@@ -30,7 +30,7 @@ class ContratoSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        
+
         $this->command->info('🔄 Creando archivos de prueba para contratos...');
 
         // Buscar el contrato de prueba
@@ -80,10 +80,10 @@ class ContratoSeeder extends Seeder
         foreach ($archivos as $archivoData) {
             try {
                 // Generar nombre único para el archivo
-                $nombreArchivo = $contrato->numero_contrato . '_' . 
-                                $archivoData['tipo_documento'] . '_' . 
-                                time() . '_' . 
-                                uniqid() . '.' . 
+                $nombreArchivo = $contrato->numero_contrato . '_' .
+                                $archivoData['tipo_documento'] . '_' .
+                                time() . '_' .
+                                uniqid() . '.' .
                                 $archivoData['tipo_archivo'];
 
                 // Definir ruta en el servidor FTP

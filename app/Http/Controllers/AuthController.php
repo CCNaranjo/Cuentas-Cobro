@@ -37,7 +37,7 @@ class AuthController extends Controller
         // Intentar autenticar
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
-            
+
             $user = Auth::user();
 
             // Asegurarse de que $user es instancia de Usuario
@@ -48,7 +48,7 @@ class AuthController extends Controller
             // Actualizar último acceso
             $user->ultimo_acceso = now();
             $user->save();
-            
+
             // Si el usuario tiene organizaciones vinculadas, establecer la primera como actual
             if (!$user->esAdminGlobal()) {
                 $primeraOrganizacion = $user->organizacionesVinculadas()->first();
@@ -56,7 +56,7 @@ class AuthController extends Controller
                     session(['organizacion_actual' => $primeraOrganizacion->id]);
                 }
             }
-            
+
             return redirect()->intended(route('dashboard'));
         }
 
@@ -101,14 +101,14 @@ class AuthController extends Controller
 
         // Detectar organización por dominio de email o código
         $organizacion = null;
-        
+
         // 1. Intentar con código de vinculación
         if ($request->filled('codigo_vinculacion')) {
             $organizacion = Organizacion::where('codigo_vinculacion', $request->codigo_vinculacion)
                 ->where('estado', 'activa')
                 ->first();
         }
-        
+
         // 2. Intentar con dominio de email
         if (!$organizacion) {
             $dominioEmail = '@' . explode('@', $request->email)[1];
@@ -135,7 +135,7 @@ class AuthController extends Controller
         Auth::login($usuario);
 
         return redirect()->route('dashboard')
-            ->with('success', 'Cuenta creada exitosamente. ' . 
+            ->with('success', 'Cuenta creada exitosamente. ' .
                 ($organizacion ? 'Tu solicitud de vinculación está pendiente de aprobación.' : ''));
     }
 
@@ -147,7 +147,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('login')
             ->with('success', 'Sesión cerrada exitosamente');
     }

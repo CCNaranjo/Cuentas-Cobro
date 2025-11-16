@@ -33,7 +33,7 @@ class AdminOrganizacionSeeder extends Seeder
 
             if (!$rolAdmin) {
                 $this->command->error("❌ No se encontró el rol admin_organizacion para la organización ID: {$organizacion->id}");
-                
+
                 // Debug: mostrar todos los roles de esta organización
                 $rolesOrganizacion = Rol::where('organizacion_id', $organizacion->id)->get();
                 $this->command->info("📋 Roles disponibles en la organización:");
