@@ -100,23 +100,38 @@
                                 @enderror
                             </div>
 
-                            <!-- Período Cobrado -->
+                            <!-- Período Inicio -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Período Cobrado
+                                    Período Inicio <span class="text-red-500">*</span>
                                 </label>
-                                <input type="text" 
-                                       name="periodo_cobrado" 
-                                       value="{{ old('periodo_cobrado') }}"
-                                       placeholder="Ej: Enero 2025, Semana 1-4, etc."
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_cobrado') border-red-500 @enderror">
-                                @error('periodo_cobrado')
+                                <input type="date" 
+                                       name="periodo_inicio" 
+                                       value="{{ old('periodo_inicio') }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_inicio') border-red-500 @enderror">
+                                @error('periodo_inicio')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Período Fin -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Fin <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date" 
+                                       name="periodo_fin" 
+                                       value="{{ old('periodo_fin') }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_fin') border-red-500 @enderror">
+                                @error('periodo_fin')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Observaciones -->
-                            <div>
+                            <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Observaciones
                                 </label>
@@ -251,7 +266,8 @@
         const datos = {
             contrato_id: document.querySelector('[name="contrato_id"]').value,
             fecha_radicacion: document.querySelector('[name="fecha_radicacion"]').value,
-            periodo_cobrado: document.querySelector('[name="periodo_cobrado"]').value,
+            periodo_inicio: document.querySelector('[name="periodo_inicio"]').value,
+            periodo_fin: document.querySelector('[name="periodo_fin"]').value,
             observaciones: document.querySelector('[name="observaciones"]').value,
             items: [],
             itemCounter: itemCounter,
@@ -305,8 +321,12 @@
                 document.querySelector('[name="fecha_radicacion"]').value = datos.fecha_radicacion;
             }
 
-            if (datos.periodo_cobrado) {
-                document.querySelector('[name="periodo_cobrado"]').value = datos.periodo_cobrado;
+            if (datos.periodo_inicio) {
+                document.querySelector('[name="periodo_inicio"]').value = datos.periodo_inicio;
+            }
+
+            if (datos.periodo_fin) {
+                document.querySelector('[name="periodo_fin"]').value = datos.periodo_fin;
             }
 
             if (datos.observaciones) {
@@ -469,7 +489,8 @@
         // Guardar al cambiar campos generales
         document.querySelector('[name="contrato_id"]').addEventListener('change', guardarBorrador);
         document.querySelector('[name="fecha_radicacion"]').addEventListener('change', guardarBorrador);
-        document.querySelector('[name="periodo_cobrado"]').addEventListener('input', guardarBorrador);
+        document.querySelector('[name="periodo_inicio"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_fin"]').addEventListener('change', guardarBorrador);
         document.querySelector('[name="observaciones"]').addEventListener('input', guardarBorrador);
     }
 

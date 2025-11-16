@@ -15,7 +15,13 @@
                 <div class="flex justify-between items-center mb-6">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-800">Contratos</h1>
-                        <p class="text-secondary mt-1">Gestiona los contratos de la organización</p>
+                        <p class="text-secondary mt-1">
+                            @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')))
+                                Gestiona los contratos de la organización
+                            @else
+                                Mis contratos asignados
+                            @endif
+                        </p>
                     </div>
                     @if(auth()->user()->tienePermiso('crear-contrato', session('organizacion_actual')))
                     <a href="{{ route('contratos.create', ['organizacion_id' => session('organizacion_actual')]) }}" 
@@ -25,6 +31,57 @@
                     </a>
                     @endif
                 </div>
+
+                <!-- Estadísticas Rápidas -->
+                @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')))
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-file-contract text-primary text-xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-secondary text-sm font-medium mb-1">Total Contratos</h3>
+                        <p class="text-3xl font-bold text-gray-800">{{ $contratos->total() }}</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-secondary text-sm font-medium mb-1">Activos</h3>
+                        <p class="text-3xl font-bold text-green-600">
+                            {{ $contratos->where('estado', 'activo')->count() }}
+                        </p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-dollar-sign text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-secondary text-sm font-medium mb-1">Valor Total</h3>
+                        <p class="text-2xl font-bold text-blue-600">
+                            ${{ number_format($contratos->sum('valor_total'), 0, ',', '.') }}
+                        </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-accent to-primary rounded-xl shadow-sm p-6 text-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-chart-line text-white text-xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-white/80 text-sm font-medium mb-1">Valor Pagado</h3>
+                        <p class="text-2xl font-bold">
+                            ${{ number_format($contratos->sum('valor_pagado'), 0, ',', '.') }}
+                        </p>
+                    </div>
+                </div>
+                @endif
 
                 <!-- Filtros -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
@@ -46,6 +103,7 @@
                             <option value="liquidado" {{ request('estado') == 'liquidado' ? 'selected' : '' }}>Liquidado</option>
                         </select>
 
+                        @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')))
                         <select name="contratista_id" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-accent">
                             <option value="">Todos los contratistas</option>
                             @foreach($contratistas as $contratista)
@@ -54,6 +112,7 @@
                             </option>
                             @endforeach
                         </select>
+                        @endif
 
                         <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors">
                             <i class="fas fa-search mr-2"></i>Buscar
@@ -69,8 +128,11 @@
                                 <tr>
                                     <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Número</th>
                                     <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Contratista</th>
+                                    @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')))
                                     <th class="text-left py-4 px-6 text-sm font-semibold text-gray-700">Supervisor</th>
+                                    @endif
                                     <th class="text-right py-4 px-6 text-sm font-semibold text-gray-700">Valor Total</th>
+                                    <th class="text-right py-4 px-6 text-sm font-semibold text-gray-700">Valor Pagado</th>
                                     <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">% Ejecución</th>
                                     <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Vigencia</th>
                                     <th class="text-center py-4 px-6 text-sm font-semibold text-gray-700">Estado</th>
@@ -98,6 +160,7 @@
                                             <span class="text-sm text-secondary italic">Sin asignar</span>
                                         @endif
                                     </td>
+                                    @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')))
                                     <td class="py-4 px-6">
                                         @if($contrato->supervisor)
                                             <span class="text-sm text-gray-800">{{ $contrato->supervisor->nombre }}</span>
@@ -105,17 +168,25 @@
                                             <span class="text-sm text-secondary italic">Sin asignar</span>
                                         @endif
                                     </td>
+                                    @endif
                                     <td class="py-4 px-6 text-right">
-                                        <span class="font-bold text-gray-800">${{ number_format($contrato->valor_total, 0) }}</span>
+                                        <span class="font-bold text-gray-800">${{ number_format($contrato->valor_total, 0, ',', '.') }}</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <div class="flex flex-col items-end">
+                                            <span class="font-semibold text-accent">${{ number_format($contrato->valor_pagado, 0, ',', '.') }}</span>
+                                            <span class="text-xs text-secondary">Saldo: ${{ number_format($contrato->saldo_disponible, 0, ',', '.') }}</span>
+                                        </div>
                                     </td>
                                     <td class="py-4 px-6">
-                                        <div class="flex items-center justify-center">
-                                            <div class="w-24">
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-full mb-1">
                                                 <div class="flex items-center justify-between text-xs mb-1">
-                                                    <span class="text-secondary">0%</span>
+                                                    <span class="font-semibold text-gray-700">{{ number_format($contrato->porcentaje_ejecucion, 1) }}%</span>
                                                 </div>
                                                 <div class="w-full bg-gray-200 rounded-full h-2">
-                                                    <div class="bg-accent h-2 rounded-full" style="width: 0%"></div>
+                                                    <div class="bg-gradient-to-r from-accent to-primary h-2 rounded-full transition-all" 
+                                                         style="width: {{ min($contrato->porcentaje_ejecucion, 100) }}%"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -128,7 +199,7 @@
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 mt-1">
                                                     <i class="fas fa-check-circle mr-1"></i>Vigente
                                                 </span>
-                                            @elseif($contrato->fecha_fin < now())
+                                            @elseif($contrato->estaVencido())
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800 mt-1">
                                                     <i class="fas fa-calendar-times mr-1"></i>Vencido
                                                 </span>
@@ -165,21 +236,23 @@
                                                title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @if(auth()->user()->tienePermiso('editar-contrato', session('organizacion_actual')))
                                             <a href="{{ route('contratos.edit', $contrato) }}" 
                                                class="text-primary hover:text-primary-dark transition-colors p-2"
                                                title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="8" class="py-12 text-center">
+                                    <td colspan="9" class="py-12 text-center">
                                         <i class="fas fa-file-contract text-6xl text-gray-300 mb-4"></i>
                                         <p class="text-secondary font-medium">No hay contratos registrados</p>
-                                        <p class="text-sm text-gray-400 mt-2">Crea tu primer contrato</p>
                                         @if(auth()->user()->tienePermiso('crear-contrato', session('organizacion_actual')))
+                                        <p class="text-sm text-gray-400 mt-2">Crea tu primer contrato</p>
                                         <a href="{{ route('contratos.create', ['organizacion_id' => session('organizacion_actual')]) }}" 
                                            class="inline-flex items-center mt-4 text-primary hover:text-primary-dark font-medium">
                                             <i class="fas fa-plus-circle mr-2"></i>

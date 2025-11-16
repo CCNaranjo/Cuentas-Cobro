@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AdminGlobalSeeder::class,
             AlcaldiaEjemploSeeder::class,
             AdminOrganizacionSeeder::class,
+            UsuariosOrganizacionSeeder::class,
             ContratoSeeder::class,
             CuentaCobroSeeder::class,
             ParametrosSistemaSeeder::class,

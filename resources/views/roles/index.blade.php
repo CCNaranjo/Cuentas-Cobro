@@ -13,7 +13,8 @@
             <div class="p-6">
                 <!-- Header Section -->
                 <div class="mb-6 animate-slideIn">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <!-- Título y descripción -->
                         <div>
                             <h1 class="text-3xl font-bold text-gray-800 flex items-center">
                                 <i class="fas fa-users-cog text-primary mr-3"></i>
@@ -23,11 +24,22 @@
                                 Administra los roles y permisos del sistema
                             </p>
                         </div>
-                        <a href="{{ route('roles.create') }}" 
-                           class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all flex items-center">
-                            <i class="fas fa-plus-circle mr-2"></i>
-                            Nuevo Rol
-                        </a>
+
+                        <!-- Botones de acción (agrupados) -->
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            @if (auth()->user()->tienePermiso('ver-permisos'))
+                            <a href="{{ route('permisos.index') }}" 
+                            class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all flex items-center justify-center">
+                                <i class="fas fa-key mr-2"></i>
+                                Gestionar Permisos
+                            </a>
+                            @endif
+                            <a href="{{ route('roles.create') }}" 
+                            class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all flex items-center justify-center">
+                                <i class="fas fa-plus-circle mr-2"></i>
+                                Nuevo Rol
+                            </a>
+                        </div>
                     </div>
                 </div>
 

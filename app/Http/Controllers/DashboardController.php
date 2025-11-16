@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Usuario;
 use App\Models\Organizacion;
 use App\Models\Contrato;
+use App\Models\CuentaCobro;
 use App\Models\VinculacionPendiente;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,6 @@ class DashboardController extends Controller
         $organizacionId = session('organizacion_actual');
         
         if (!$organizacionId) {
-            // Si no tiene organización, buscar la primera vinculada
             $primeraOrg = $user->organizacionesVinculadas()->first();
             
             if ($primeraOrg) {
@@ -43,6 +43,7 @@ class DashboardController extends Controller
 
         // Obtener rol del usuario en la organización
         $rol = $user->roles()
+            ->wherePivot('organizacion_id', $organizacionId)
             ->wherePivot('estado', 'activo')
             ->first();
 
@@ -67,33 +68,25 @@ class DashboardController extends Controller
     private function dashboardAdminGlobal()
     {
         $estadisticas = [
-            // KPIs de Licencia y Uso
             'total_organizaciones' => Organizacion::count(),
             'organizaciones_activas' => Organizacion::where('estado', 'activa')->count(),
-            'organizaciones_por_expirar' => 0, // TODO: Implementar cuando haya licencias
-            
-            // Usuarios
             'total_usuarios' => Usuario::count(),
             'usuarios_activos' => Usuario::where('estado', 'activo')->count(),
             'usuarios_nuevos_mes' => Usuario::whereMonth('created_at', now()->month)->count(),
-            
-            // Contratos
             'total_contratos' => Contrato::count(),
             'contratos_activos' => Contrato::where('estado', 'activo')->count(),
             'contratos_vencidos' => Contrato::where('estado', 'activo')
                 ->where('fecha_fin', '<', now())
                 ->count(),
-            
-            // Volumen de Transacciones (Placeholder para Cuentas de Cobro)
-            'monto_total_radicado' => 0, // TODO: Sumar cuentas radicadas
-            'monto_total_pagado' => 0, // TODO: Sumar cuentas pagadas
-            
-            // Valor Total de Contratos
             'valor_total_contratos' => Contrato::sum('valor_total'),
             'valor_contratos_activos' => Contrato::where('estado', 'activo')->sum('valor_total'),
+            
+            // Métricas de Cuentas de Cobro
+            'total_cuentas_cobro' => CuentaCobro::count(),
+            'monto_total_radicado' => CuentaCobro::whereIn('estado', ['radicada', 'certificado_supervisor', 'verificado_contratacion', 'verificado_presupuesto', 'aprobada_ordenador', 'en_proceso_pago', 'pagada'])->sum('valor_neto'),
+            'monto_total_pagado' => CuentaCobro::where('estado', 'pagada')->sum('valor_neto'),
         ];
 
-        // Organizaciones Críticas (más contratos activos)
         $organizacionesCriticas = Organizacion::withCount([
                 'contratos' => function($query) {
                     $query->where('estado', 'activo');
@@ -104,22 +97,17 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Organizaciones Recientes
         $organizacionesRecientes = Organizacion::with(['usuarios', 'contratos'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        // Distribución de contratos por estado
         $distribucionContratos = Contrato::select('estado', DB::raw('count(*) as total'))
             ->groupBy('estado')
             ->get()
             ->pluck('total', 'estado');
 
-        // Actividad Reciente
-        $actividadReciente = collect([
-            // TODO: Implementar logs de actividad
-        ]);
+        $actividadReciente = collect([]);
 
         return view('dashboard.admin-global', compact(
             'estadisticas',
@@ -166,6 +154,9 @@ class DashboardController extends Controller
             case 'tesorero':
                 return $this->dashboardTesorero($organizacion, $estadisticasComunes);
             
+            case 'revisor_contratacion':
+                return $this->dashboardRevisorContratacion($organizacion, $estadisticasComunes);
+            
             default:
                 return $this->dashboardFuncionarioGeneral($organizacion, $estadisticasComunes, $rolNombre);
         }
@@ -184,7 +175,25 @@ class DashboardController extends Controller
                 ->where('estado', 'activo')
                 ->whereBetween('fecha_fin', [now(), now()->addDays(30)])
                 ->count(),
-            'cuentas_pendientes' => 0, // TODO: Implementar
+            
+            // Métricas de Cuentas de Cobro
+            'cuentas_pendientes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->whereIn('estado', ['radicada', 'certificado_supervisor', 'verificado_contratacion', 'verificado_presupuesto'])
+                ->count(),
+            'cuentas_pagadas_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'pagada')
+                ->whereMonth('updated_at', now()->month)
+                ->count(),
+            'monto_pagado_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'pagada')
+                ->whereMonth('updated_at', now()->month)
+                ->sum('valor_neto'),
         ]);
 
         $contratosRecientes = $organizacion->contratos()
@@ -226,10 +235,26 @@ class DashboardController extends Controller
                 ->where('organizacion_id', $organizacion->id)
                 ->where('estado', 'activo')
                 ->count(),
-            'cuentas_pendientes_certificacion' => 0, // TODO: Implementar
+            
+            // Cuentas pendientes de certificación (radicadas)
+            'cuentas_pendientes_certificacion' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacion) {
+                    $q->where('supervisor_id', $userId)
+                      ->where('organizacion_id', $organizacion->id);
+                })
+                ->whereIn('estado', ['radicada', 'en_correccion_supervisor'])
+                ->count(),
+            
             'contratos_por_vencer' => Contrato::where('supervisor_id', $userId)
                 ->where('estado', 'activo')
                 ->whereBetween('fecha_fin', [now(), now()->addDays(30)])
+                ->count(),
+            
+            'cuentas_certificadas_mes' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacion) {
+                    $q->where('supervisor_id', $userId)
+                      ->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'certificado_supervisor')
+                ->whereMonth('updated_at', now()->month)
                 ->count(),
         ]);
 
@@ -240,15 +265,22 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
-        $tareasPendientes = [
-            // TODO: Implementar tareas de cuentas por certificar
-        ];
+        // Cuentas pendientes de certificar
+        $cuentasPendientes = CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacion) {
+                $q->where('supervisor_id', $userId)
+                  ->where('organizacion_id', $organizacion->id);
+            })
+            ->whereIn('estado', ['radicada', 'en_correccion_supervisor'])
+            ->with(['contrato.contratista'])
+            ->orderBy('created_at', 'asc')
+            ->take(10)
+            ->get();
 
         return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
             'misContratos',
-            'tareasPendientes'
+            'cuentasPendientes'
         ));
     }
 
@@ -258,20 +290,51 @@ class DashboardController extends Controller
     private function dashboardOrdenadorGasto($organizacion, $estadisticasComunes)
     {
         $estadisticas = array_merge($estadisticasComunes, [
-            'cuentas_pendientes_aprobacion' => 0, // TODO: Implementar
+            // Cuentas pendientes de aprobación final
+            'cuentas_pendientes_aprobacion' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'verificado_presupuesto')
+                ->count(),
+            
+            'monto_pendiente_aprobacion' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'verificado_presupuesto')
+                ->sum('valor_neto'),
+            
+            'cuentas_aprobadas_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'aprobada_ordenador')
+                ->whereMonth('updated_at', now()->month)
+                ->count(),
+            
+            'monto_aprobado_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'aprobada_ordenador')
+                ->whereMonth('updated_at', now()->month)
+                ->sum('valor_neto'),
+            
             'presupuesto_disponible' => 0, // TODO: Implementar
             'porcentaje_ejecucion' => 0, // TODO: Calcular
-            'ordenes_pago_generadas' => 0, // TODO: Implementar
         ]);
 
-        $tareasPendientes = [
-            // TODO: Cuentas pendientes de aprobación ejecutiva
-        ];
+        // Cuentas pendientes de aprobación
+        $cuentasPendientes = CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                $q->where('organizacion_id', $organizacion->id);
+            })
+            ->where('estado', 'verificado_presupuesto')
+            ->with(['contrato.contratista'])
+            ->orderBy('created_at', 'asc')
+            ->take(10)
+            ->get();
 
         return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
-            'tareasPendientes'
+            'cuentasPendientes'
         ));
     }
 
@@ -281,20 +344,103 @@ class DashboardController extends Controller
     private function dashboardTesorero($organizacion, $estadisticasComunes)
     {
         $estadisticas = array_merge($estadisticasComunes, [
-            'ordenes_pago_pendientes' => 0, // TODO: Implementar
-            'pagos_ejecutados_hoy' => 0, // TODO: Implementar
-            'pagos_ejecutados_mes' => 0, // TODO: Implementar
+            // Cuentas para verificar presupuesto (CDP/RP)
+            'cuentas_verificar_presupuesto' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'verificado_contratacion')
+                ->count(),
+            
+            // Órdenes de pago pendientes de generar
+            'ordenes_pago_pendientes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'aprobada_ordenador')
+                ->count(),
+            
+            // Pagos en proceso
+            'pagos_en_proceso' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'en_proceso_pago')
+                ->count(),
+            
+            'pagos_ejecutados_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'pagada')
+                ->whereMonth('updated_at', now()->month)
+                ->count(),
+            
+            'monto_pagado_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'pagada')
+                ->whereMonth('updated_at', now()->month)
+                ->sum('valor_neto'),
+            
             'saldo_disponible' => 0, // TODO: Integración bancaria
         ]);
 
-        $tareasPendientes = [
-            // TODO: Órdenes de pago pendientes de ejecución
-        ];
+        // Cuentas pendientes de acción de tesorería
+        $cuentasPendientes = CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                $q->where('organizacion_id', $organizacion->id);
+            })
+            ->whereIn('estado', ['verificado_contratacion', 'aprobada_ordenador', 'en_proceso_pago'])
+            ->with(['contrato.contratista'])
+            ->orderBy('created_at', 'asc')
+            ->take(10)
+            ->get();
 
         return view('dashboard.organizacion', compact(
             'estadisticas',
             'organizacion',
-            'tareasPendientes'
+            'cuentasPendientes'
+        ));
+    }
+
+    /**
+     * Dashboard Revisor de Contratación
+     */
+    private function dashboardRevisorContratacion($organizacion, $estadisticasComunes)
+    {
+        $estadisticas = array_merge($estadisticasComunes, [
+            // Cuentas pendientes de verificación legal
+            'cuentas_pendientes_verificacion' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->whereIn('estado', ['certificado_supervisor', 'en_correccion_contratacion'])
+                ->count(),
+            
+            'cuentas_verificadas_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'verificado_contratacion')
+                ->whereMonth('updated_at', now()->month)
+                ->count(),
+            
+            'cuentas_devueltas_mes' => CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                    $q->where('organizacion_id', $organizacion->id);
+                })
+                ->where('estado', 'en_correccion_contratacion')
+                ->whereMonth('updated_at', now()->month)
+                ->count(),
+        ]);
+
+        // Cuentas pendientes de verificar
+        $cuentasPendientes = CuentaCobro::whereHas('contrato', function($q) use ($organizacion) {
+                $q->where('organizacion_id', $organizacion->id);
+            })
+            ->whereIn('estado', ['certificado_supervisor', 'en_correccion_contratacion'])
+            ->with(['contrato.contratista'])
+            ->orderBy('created_at', 'asc')
+            ->take(10)
+            ->get();
+
+        return view('dashboard.organizacion', compact(
+            'estadisticas',
+            'organizacion',
+            'cuentasPendientes'
         ));
     }
 
@@ -318,15 +464,56 @@ class DashboardController extends Controller
     private function dashboardContratista($userId, $organizacionId)
     {
         $estadisticas = [
+            'cuentas_pendientes' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })
+                ->whereIn('estado', ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion'])
+                ->count(),
+
             'mis_contratos' => Contrato::where('contratista_id', $userId)
                 ->where('organizacion_id', $organizacionId)
                 ->where('estado', 'activo')
                 ->count(),
-            'total_a_recibir' => 0, // TODO: Sumar cuentas aprobadas pendientes de pago
-            'pagos_recibidos_mes' => 0, // TODO: Implementar
-            'cuentas_pendientes' => 0, // TODO: Cuentas en revisión
-            'cuentas_devueltas' => 0, // TODO: Cuentas rechazadas
+            
+            // Cuentas de cobro
+            'cuentas_borradores' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)
+                      ->where('organizacion_id', $organizacionId);
+                })
+                ->where('estado', 'borrador')
+                ->count(),
+            
+            'cuentas_en_revision' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)
+                      ->where('organizacion_id', $organizacionId);
+                })
+                ->whereIn('estado', ['radicada', 'certificado_supervisor', 'verificado_contratacion', 'verificado_presupuesto'])
+                ->count(),
+            
+            'cuentas_devueltas' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)
+                      ->where('organizacion_id', $organizacionId);
+                })
+                ->whereIn('estado', ['en_correccion_supervisor', 'en_correccion_contratacion'])
+                ->count(),
+            
+            'total_a_recibir' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)
+                      ->where('organizacion_id', $organizacionId);
+                })
+                ->whereIn('estado', ['aprobada_ordenador', 'en_proceso_pago'])
+                ->sum('valor_neto'),
+            
+            'pagos_recibidos_mes' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)
+                      ->where('organizacion_id', $organizacionId);
+                })
+                ->where('estado', 'pagada')
+                ->whereMonth('updated_at', now()->month)
+                ->sum('valor_neto'),
+            
             'valor_total_contratos' => Contrato::where('contratista_id', $userId)
+                ->where('organizacion_id', $organizacionId)
                 ->where('estado', 'activo')
                 ->sum('valor_total'),
         ];
@@ -337,26 +524,79 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Contratos listos para crear cuenta de cobro
+        // Contratos listos para crear cuenta de cobro (activos)
         $contratosListosParaCobro = $misContratos->filter(function($contrato) {
-            // TODO: Verificar si puede crear cuenta según el contrato
             return $contrato->estado === 'activo';
         });
 
+        // Cuentas devueltas que necesitan corrección
+        $cuentasDevueltas = CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                $q->where('contratista_id', $userId)
+                  ->where('organizacion_id', $organizacionId);
+            })
+            ->whereIn('estado', ['en_correccion_supervisor', 'en_correccion_contratacion'])
+            ->with(['contrato', 'historial' => function($q) {
+                $q->latest()->limit(1);
+            }])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        // Cuentas borradores sin terminar
+        $cuentasBorrador = CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                $q->where('contratista_id', $userId)
+                  ->where('organizacion_id', $organizacionId);
+            })
+            ->where('estado', 'borrador')
+            ->with(['contrato'])
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // Últimas cuentas en proceso
+        $cuentasEnProceso = CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                $q->where('contratista_id', $userId)
+                  ->where('organizacion_id', $organizacionId);
+            })
+            ->whereIn('estado', ['radicada', 'certificado_supervisor', 'verificado_contratacion', 'verificado_presupuesto'])
+            ->with(['contrato'])
+            ->orderBy('updated_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // Trazabilidad de cuentas
         $trazabilidadCuentas = [
-            // TODO: Distribución de cuentas por estado
-            'borradores' => 0,
-            'radicadas' => 0,
-            'en_revision' => 0,
-            'aprobadas' => 0,
-            'pagadas' => 0,
-            'rechazadas' => 0,
+            'borradores' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->where('estado', 'borrador')->count(),
+            
+            'radicadas' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->where('estado', 'radicada')->count(),
+            
+            'en_revision' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->whereIn('estado', ['certificado_supervisor', 'verificado_contratacion', 'verificado_presupuesto'])->count(),
+            
+            'aprobadas' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->where('estado', 'aprobada_ordenador')->count(),
+            
+            'pagadas' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->where('estado', 'pagada')->count(),
+            
+            'rechazadas' => CuentaCobro::whereHas('contrato', function($q) use ($userId, $organizacionId) {
+                    $q->where('contratista_id', $userId)->where('organizacion_id', $organizacionId);
+                })->whereIn('estado', ['en_correccion_supervisor', 'en_correccion_contratacion'])->count(),
         ];
 
         return view('dashboard.contratista', compact(
             'estadisticas',
             'misContratos',
             'contratosListosParaCobro',
+            'cuentasDevueltas',
+            'cuentasBorrador',
+            'cuentasEnProceso',
             'trazabilidadCuentas'
         ));
     }
@@ -370,13 +610,11 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         
-        // Verificar si tiene vinculaciones pendientes
         $vinculacionesPendientes = VinculacionPendiente::where('usuario_id', $user->id)
             ->where('estado', 'pendiente')
             ->with('organizacion')
             ->get();
 
-        // Listado público de organizaciones
         $organizacionesDisponibles = Organizacion::where('estado', 'activa')
             ->select('id', 'nombre_oficial', 'municipio', 'departamento', 'telefono_contacto')
             ->orderBy('nombre_oficial')

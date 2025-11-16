@@ -70,6 +70,13 @@ class RolesSeeder extends Seeder
             'es_sistema' => true,
         ]);
 
+        $revisorContratacion = Rol::create([
+            'nombre' => 'revisor_contratacion',
+            'descripcion' => 'Revisor de Contratación - Verifica legalidad de cuentas',
+            'nivel_jerarquico' => 3,
+            'es_sistema' => true,
+        ]);
+
         // ============================================
         // 3. ASIGNAR PERMISOS A ROLES
         // ============================================
@@ -81,7 +88,8 @@ class RolesSeeder extends Seeder
             $supervisor,
             $ordenadorGasto,
             $tesorero,
-            $usuarioBasico
+            $usuarioBasico,
+            $revisorContratacion
         );
 
         $this->command->info('✓ Roles creados y permisos asignados correctamente');
@@ -97,7 +105,8 @@ class RolesSeeder extends Seeder
         $supervisor,
         $ordenadorGasto,
         $tesorero,
-        $usuarioBasico
+        $usuarioBasico,
+        $revisorContratacion
     ) {
         // ============================================
         // ADMIN GLOBAL - TODOS LOS PERMISOS
@@ -110,33 +119,29 @@ class RolesSeeder extends Seeder
         // ADMIN ORGANIZACIÓN
         // ============================================
         $slugsAdminOrg = [
-            // Dashboard
             'ver-dashboard',
-            'ver-estadisticas-globales',
-            
-            // Usuarios
             'ver-usuarios',
             'crear-usuario',
             'editar-usuario',
-            'asignar-rol',
-            'cambiar-estado-usuario',
-            'gestionar-usuarios',
-            
-            // Contratos
+            'eliminar-usuario',
+            'asignar-rol-usuario',
+            'ver-roles',
+            'ver-permisos',
+            'editar-roles',
             'ver-todos-contratos',
             'crear-contrato',
             'editar-contrato',
-            'vincular-contratista',
-            'cambiar-estado-contrato',
-            'gestionar-contratos',
+            'eliminar-contrato',
             'validar-contratos',
-            'gestionar-contratista',
-            
-            // Cuentas de Cobro
+            'vincular-contratista',
             'ver-todas-cuentas',
-            
-            // Reportes
+            'ver-historial-cuenta',
+            'ver-documentos',
             'ver-reportes-organizacion',
+            'exportar-reportes',
+            'ver-reportes-contratos',
+            'ver-configuracion',
+            'editar-configuracion-organizacion',
         ];
         $this->asignarPermisosPorSlug($adminOrganizacion, $slugsAdminOrg, 'Admin Organización');
 
@@ -146,6 +151,7 @@ class RolesSeeder extends Seeder
         $slugsContratista = [
             'ver-dashboard',
             'ver-mis-contratos',
+            'ver-informacion-contratos',
             'ver-mis-cuentas',
             'crear-cuenta-cobro',
             'editar-cuenta-cobro',
@@ -153,6 +159,7 @@ class RolesSeeder extends Seeder
             'ver-historial-cuenta',
             'cargar-documentos',
             'ver-documentos',
+            'agregar-comentarios',
         ];
         $this->asignarPermisosPorSlug($contratista, $slugsContratista, 'Contratista');
 
@@ -162,6 +169,7 @@ class RolesSeeder extends Seeder
         $slugsSupervisor = [
             'ver-dashboard',
             'ver-mis-contratos',
+            'ver-informacion-contratos',
             'ver-todas-cuentas',
             'revisar-cuenta-cobro',
             'aprobar-cuenta-cobro',
@@ -178,13 +186,13 @@ class RolesSeeder extends Seeder
         // ============================================
         $slugsOrdenador = [
             'ver-dashboard',
+            'ver-todos-contratos',
             'ver-todas-cuentas',
-            'aprobar-cuenta-cobro',
-            'aprobacion-final',
+            'aprobar-finalmente',
             'autorizar-pago',
             'ver-presupuesto',
             'gestionar-presupuesto',
-            'generar-ordenes-pago',
+            'ver-informacion-contratos',
             'ver-reportes-financieros',
             'agregar-comentarios',
         ];
@@ -197,13 +205,28 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ver-todas-cuentas',
             'procesar-pago',
-            'registrar-pago',
+            'generar-ordenes-pago',
             'transferir-banco',
             'confirmar-pagos',
             'ver-reportes-financieros',
             'ver-documentos',
+            'verificar-presupuesto-cuenta-cobro',
         ];
         $this->asignarPermisosPorSlug($tesorero, $slugsTesorero, 'Tesorero');
+
+        // ============================================
+        // REVISOR CONTRATACIÓN (Nuevo)
+        // ============================================
+        $slugsRevisor = [
+            'ver-dashboard',
+            'ver-todas-cuentas',
+            'ver-historial-cuenta',
+            'ver-documentos',
+            'agregar-comentarios',
+            'verificar-legal-cuenta-cobro',
+            'rechazar-cuenta-cobro',
+        ];
+        $this->asignarPermisosPorSlug($revisorContratacion, $slugsRevisor, 'Revisor Contratación');
 
         // ============================================
         // USUARIO BÁSICO

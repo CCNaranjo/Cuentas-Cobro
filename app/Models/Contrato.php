@@ -4,20 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Contrato extends Model
 {
-   use HasFactory;
-
-    protected $table = 'contratos';
+    use HasFactory;
 
     protected $fillable = [
-        'numero_contrato',
         'organizacion_id',
+        'numero_contrato',
+        'objeto_contractual',
         'contratista_id',
         'supervisor_id',
-        'objeto_contractual',
         'valor_total',
+        'valor_pagado',
         'fecha_inicio',
         'fecha_fin',
         'porcentaje_retencion_fuente',
@@ -30,14 +30,18 @@ class Contrato extends Model
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
         'valor_total' => 'decimal:2',
+        'valor_pagado' => 'decimal:2',
         'porcentaje_retencion_fuente' => 'decimal:2',
         'porcentaje_estampilla' => 'decimal:2',
     ];
 
-    // Relaciones
+    // ============================================
+    // RELACIONES
+    // ============================================
+
     public function organizacion()
     {
-        return $this->belongsTo(Organizacion::class, 'organizacion_id');
+        return $this->belongsTo(Organizacion::class);
     }
 
     public function contratista()
@@ -55,52 +59,195 @@ class Contrato extends Model
         return $this->belongsTo(Usuario::class, 'vinculado_por');
     }
 
-    // NUEVA RELACIÓN
     public function archivos()
     {
-        return $this->hasMany(ContratoArchivo::class, 'contrato_id');
+        return $this->hasMany(ContratoArchivo::class);
     }
 
-    /*
     public function cuentasCobro()
     {
-        return $this->hasMany(CuentaCobro::class, 'contrato_id');
+        return $this->hasMany(CuentaCobro::class);
     }
-    */
 
-    // Métodos auxiliares
-    public function valorCobrado()
+    // ============================================
+    // SCOPES
+    // ============================================
+
+    /**
+     * Filtrar contratos por organización
+     */
+    public function scopePorOrganizacion($query, $organizacionId)
     {
-        return $this->cuentasCobro()
-                    ->whereIn('estado', ['aprobada', 'pagada'])
-                    ->sum('valor_neto');
+        return $query->where('organizacion_id', $organizacionId);
     }
 
-    public function valorDisponible()
+    /**
+     * Filtrar contratos por estado
+     */
+    public function scopePorEstado($query, $estado)
     {
-        return $this->valor_total - $this->valorCobrado();
+        return $query->where('estado', $estado);
     }
 
-    public function porcentajeEjecucion()
-    {
-        if ($this->valor_total == 0) return 0;
-        return ($this->valorCobrado() / $this->valor_total) * 100;
-    }
-
-    public function estaActivo()
-    {
-        return $this->estado === 'activo' && 
-               now()->between($this->fecha_inicio, $this->fecha_fin);
-    }
-
-    // Scopes
+    /**
+     * Filtrar contratos activos
+     */
     public function scopeActivos($query)
     {
         return $query->where('estado', 'activo');
     }
 
-    public function scopeVigentes($query)
+    /**
+     * Filtrar contratos por supervisor
+     */
+    public function scopePorSupervisor($query, $supervisorId)
     {
-        return $query->where('fecha_fin', '>=', now());
-    } 
+        return $query->where('supervisor_id', $supervisorId);
+    }
+
+    /**
+     * Filtrar contratos por contratista
+     */
+    public function scopePorContratista($query, $contratistaId)
+    {
+        return $query->where('contratista_id', $contratistaId);
+    }
+
+    /**
+     * Scope para filtrar contratos según permisos del usuario
+     */
+    public function scopeAccesiblesParaUsuario($query, $usuario, $organizacionId = null)
+    {
+        // Si tiene permiso para ver todos los contratos
+        if ($usuario->tienePermiso('ver-todos-contratos', $organizacionId)) {
+            // Admin Global: ve todos los contratos
+            if ($usuario->esAdminGlobal()) {
+                return $query;
+            }
+            // Admin Organización u Ordenador Gasto: solo de su organización
+            return $query->where('organizacion_id', $organizacionId);
+        }
+        
+        // Si solo puede ver sus contratos (supervisor o contratista)
+        if ($usuario->tienePermiso('ver-mis-contratos', $organizacionId)) {
+            return $query->where(function ($q) use ($usuario) {
+                $q->where('contratista_id', $usuario->id)
+                  ->orWhere('supervisor_id', $usuario->id);
+            });
+        }
+
+        // Si no tiene ningún permiso, no ve nada
+        return $query->whereRaw('1 = 0');
+    }
+
+    // ============================================
+    // MÉTODOS DE CÁLCULO FINANCIERO
+    // ============================================
+
+    /**
+     * Recalcular el valor pagado consultando las cuentas de cobro
+     */
+    public function recalcularValorPagado()
+    {
+        $valorPagado = $this->cuentasCobro()
+            ->whereIn('estado', ['pagada'])
+            ->sum('valor_neto');
+
+        $this->update(['valor_pagado' => $valorPagado]);
+
+        return $valorPagado;
+    }
+
+    /**
+     * Obtener el saldo disponible del contrato
+     */
+    public function getSaldoDisponibleAttribute()
+    {
+        return $this->valor_total - $this->valor_pagado;
+    }
+
+    /**
+     * Obtener el porcentaje de ejecución
+     */
+    public function getPorcentajeEjecucionAttribute()
+    {
+        if ($this->valor_total == 0) {
+            return 0;
+        }
+
+        return ($this->valor_pagado / $this->valor_total) * 100;
+    }
+
+    /**
+     * Obtener estadísticas financieras del contrato
+     */
+    public function getEstadisticasFinancieras()
+    {
+        return [
+            'valor_total' => $this->valor_total,
+            'valor_pagado' => $this->valor_pagado,
+            'saldo_disponible' => $this->saldo_disponible,
+            'porcentaje_ejecucion' => round($this->porcentaje_ejecucion, 2),
+            'cuentas_cobro_pagadas' => $this->cuentasCobro()->whereIn('estado', ['pagada', 'transferido'])->count(),
+            'cuentas_cobro_pendientes' => $this->cuentasCobro()->whereIn('estado', ['radicada', 'en_revision', 'aprobada'])->count(),
+        ];
+    }
+
+    // ============================================
+    // MÉTODOS DE ESTADO
+    // ============================================
+
+    /**
+     * Verificar si el contrato está activo
+     */
+    public function estaActivo()
+    {
+        return $this->estado === 'activo' && 
+               $this->fecha_inicio <= now() && 
+               $this->fecha_fin >= now();
+    }
+
+    /**
+     * Verificar si el contrato está vencido
+     */
+    public function estaVencido()
+    {
+        return $this->fecha_fin < now();
+    }
+
+    /**
+     * Días restantes hasta la finalización
+     */
+    public function getDiasRestantesAttribute()
+    {
+        if ($this->fecha_fin < now()) {
+            return 0;
+        }
+
+        return now()->diffInDays($this->fecha_fin);
+    }
+
+    /**
+     * Verificar si un usuario tiene acceso a este contrato
+     */
+    public function usuarioPuedeVer($usuario)
+    {
+        // Admin Global puede ver todos
+        if ($usuario->esAdminGlobal()) {
+            return true;
+        }
+
+        // Admin Organización u Ordenador Gasto con permiso ver-todos-contratos
+        if ($usuario->tienePermiso('ver-todos-contratos', $this->organizacion_id)) {
+            return true;
+        }
+
+        // Supervisor o Contratista del contrato
+        if ($usuario->tienePermiso('ver-mis-contratos', $this->organizacion_id)) {
+            return $this->contratista_id == $usuario->id || 
+                   $this->supervisor_id == $usuario->id;
+        }
+
+        return false;
+    }
 }
