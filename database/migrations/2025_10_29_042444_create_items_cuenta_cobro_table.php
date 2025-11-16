@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('items_cuenta_cobro', function (Blueprint $table) {
@@ -17,7 +16,7 @@ return new class extends Migration
             $table->decimal('valor_total', 15, 2);
             $table->decimal('porcentaje_avance', 5, 2)->nullable();
             $table->timestamps();
-            
+
             $table->index('cuenta_cobro_id');
         });
     }

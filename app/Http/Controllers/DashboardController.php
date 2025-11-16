@@ -18,7 +18,7 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        /** @var \App\Models\Usuario $user */ 
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
 
         // 1. ADMIN GLOBAL - Dashboard Global
@@ -28,10 +28,10 @@ class DashboardController extends Controller
 
         // 2. Verificar si tiene organización activa
         $organizacionId = session('organizacion_actual');
-        
+
         if (!$organizacionId) {
             $primeraOrg = $user->organizacionesVinculadas()->first();
-            
+
             if ($primeraOrg) {
                 session(['organizacion_actual' => $primeraOrg->id]);
                 $organizacionId = $primeraOrg->id;
@@ -88,7 +88,7 @@ class DashboardController extends Controller
         ];
 
         $organizacionesCriticas = Organizacion::withCount([
-                'contratos' => function($query) {
+                'contratos' => function ($query) {
                     $query->where('estado', 'activo');
                 }
             ])
@@ -126,7 +126,7 @@ class DashboardController extends Controller
     private function dashboardOrganizacion($organizacionId, $rolNombre, $userId)
     {
         $organizacion = Organizacion::with(['usuarios', 'contratos'])->findOrFail($organizacionId);
-        
+
         // KPIs Comunes
         $estadisticasComunes = [
             'usuarios_activos' => $organizacion->usuarios()
@@ -144,13 +144,13 @@ class DashboardController extends Controller
         switch ($rolNombre) {
             case 'admin_organizacion':
                 return $this->dashboardAdminOrganizacion($organizacion, $estadisticasComunes);
-            
+
             case 'supervisor':
                 return $this->dashboardSupervisor($organizacion, $estadisticasComunes, $userId);
-            
+
             case 'ordenador_gasto':
                 return $this->dashboardOrdenadorGasto($organizacion, $estadisticasComunes);
-            
+
             case 'tesorero':
                 return $this->dashboardTesorero($organizacion, $estadisticasComunes);
             

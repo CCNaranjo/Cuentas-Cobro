@@ -27,14 +27,14 @@ class DocumentoSoporte extends Model
     ];
 
     // ==================== RELACIONES ====================
-    
+
     public function cuentaCobro()
     {
         return $this->belongsTo(CuentaCobro::class, 'cuenta_cobro_id');
     }
 
     // ==================== MÉTODOS AUXILIARES ====================
-    
+
     public function getUrlDescarga()
     {
         return Storage::url($this->ruta_archivo);
@@ -70,7 +70,7 @@ class DocumentoSoporte extends Model
     }
 
     // ==================== EVENTOS ====================
-    
+
     protected static function boot()
     {
         parent::boot();
@@ -82,7 +82,7 @@ class DocumentoSoporte extends Model
     }
 
     // ==================== ACCESSORS ====================
-    
+
     public function getExtensionAttribute()
     {
         return pathinfo($this->nombre_archivo, PATHINFO_EXTENSION);

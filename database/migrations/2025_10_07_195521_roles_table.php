@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -29,7 +28,7 @@ return new class extends Migration
             $table->foreignId('asignado_por')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->enum('estado', ['activo', 'inactivo', 'suspendido'])->default('activo');
             $table->timestamps();
-            
+
             $table->unique(['usuario_id', 'organizacion_id']);
             $table->index(['organizacion_id', 'estado']);
         });
@@ -61,7 +60,7 @@ return new class extends Migration
             $table->foreignId('rol_id')->constrained('roles')->onDelete('cascade');
             $table->foreignId('permiso_id')->constrained('permisos')->onDelete('cascade');
             $table->timestamps();
-            
+
             $table->unique(['rol_id', 'permiso_id']);
         });
     }

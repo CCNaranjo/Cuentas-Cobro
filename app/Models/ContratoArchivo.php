@@ -44,7 +44,7 @@ class ContratoArchivo extends Model
     public function getTamañoFormateadoAttribute()
     {
         $bytes = $this->tamaño;
-        
+
         if ($bytes >= 1073741824) {
             return number_format($bytes / 1073741824, 2) . ' GB';
         } elseif ($bytes >= 1048576) {

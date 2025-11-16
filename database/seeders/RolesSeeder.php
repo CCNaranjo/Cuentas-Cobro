@@ -16,7 +16,7 @@ class RolesSeeder extends Seeder
         // ============================================
         // 1. ROLES GLOBALES DEL SISTEMA
         // ============================================
-        
+
         $adminGlobal = Rol::create([
             'nombre' => 'admin_global',
             'descripcion' => 'Administrador Global del Sistema - Acceso total',
@@ -41,7 +41,7 @@ class RolesSeeder extends Seeder
         // ============================================
         // 2. ROLES PLANTILLA PARA ORGANIZACIONES
         // ============================================
-        
+
         $adminOrganizacion = Rol::create([
             'nombre' => 'admin_organizacion',
             'descripcion' => 'Administrador de Organización',
@@ -80,7 +80,7 @@ class RolesSeeder extends Seeder
         // ============================================
         // 3. ASIGNAR PERMISOS A ROLES
         // ============================================
-        
+
         $this->asignarPermisos(
             $adminGlobal,
             $adminOrganizacion,
@@ -243,14 +243,14 @@ class RolesSeeder extends Seeder
     private function asignarPermisosPorSlug($rol, $slugs, $nombreRol)
     {
         $permisos = Permiso::whereIn('slug', $slugs)->pluck('id');
-        
+
         if ($permisos->count() !== count($slugs)) {
             $encontrados = Permiso::whereIn('slug', $slugs)->pluck('slug')->toArray();
             $faltantes = array_diff($slugs, $encontrados);
             $this->command->warn("  ⚠ {$nombreRol}: Faltan " . count($faltantes) . " permisos");
             $this->command->warn("    Permisos faltantes: " . implode(', ', $faltantes));
         }
-        
+
         $rol->permisos()->sync($permisos);
         $this->command->info("  → {$nombreRol}: {$permisos->count()} permisos asignados");
     }

@@ -48,7 +48,7 @@ class VinculacionPendiente extends Model
 
     public function scopeNoExpiradas($query)
     {
-        return $query->where(function($q) {
+        return $query->where(function ($q) {
             $q->whereNull('expira_en')
               ->orWhere('expira_en', '>', now());
         });

@@ -17,14 +17,14 @@ class VerificarAdminGlobal
      */
     public function handle(Request $request, Closure $next): Response
     {
-        /** @var \App\Models\Usuario $user */ 
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
 
         if (!\Illuminate\Support\Facades\Auth::check()) {
             return redirect()->route('login');
         }
-        
-        
+
+
         if (!$user->esAdminGlobal()) {
             abort(403, 'Acceso denegado. Solo para administradores globales.');
         }

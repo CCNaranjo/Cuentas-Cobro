@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('parametros_sistema', function (Blueprint $table) {
@@ -17,7 +16,7 @@ return new class extends Migration
             $table->string('descripcion')->comment('Descripción del parámetro');
             $table->boolean('es_cifrado')->default(false)->comment('Si el valor debe estar cifrado');
             $table->timestamps();
-            
+
             // Índices
             $table->index('clave');
             $table->index('categoria');

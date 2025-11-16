@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('historial_estados', function (Blueprint $table) {
@@ -16,7 +15,7 @@ return new class extends Migration
             $table->foreignId('usuario_id')->constrained('usuarios')->onDelete('cascade');
             $table->text('comentario')->nullable();
             $table->timestamps();
-            
+
             $table->index(['cuenta_cobro_id', 'created_at']);
         });
     }

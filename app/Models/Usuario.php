@@ -10,7 +10,8 @@ use Illuminate\Notifications\Notifiable;
 class Usuario extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
+    use Notifiable;
 
     /**
      * usuarios
@@ -117,10 +118,10 @@ class Usuario extends Authenticatable
         if ($this->esAdminGlobal()) {
             return 1;
         }
-        
+
         // Obtener el rol de menor nivel (más alto en jerarquía)
         $rol = $this->roles()->orderBy('nivel_jerarquico')->first();
-        
+
         return $rol ? $rol->nivel_jerarquico : 5;
     }
 

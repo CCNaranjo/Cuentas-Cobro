@@ -33,13 +33,13 @@ class AlcaldiaEjemploSeeder extends Seeder
             ];
 
             foreach ($organizaciones as $orgData) {
-                    $organizacion = Organizacion::firstOrCreate(
-                        ['nit' => $orgData['nit']],
-                        $orgData
-                    );
+                $organizacion = Organizacion::firstOrCreate(
+                    ['nit' => $orgData['nit']],
+                    $orgData
+                );
 
-                    $this->command->info("🏢 Organización creada: {$organizacion->nombre_oficial}");
-                }
+                $this->command->info("🏢 Organización creada: {$organizacion->nombre_oficial}");
+            }
         });
     }
     /**

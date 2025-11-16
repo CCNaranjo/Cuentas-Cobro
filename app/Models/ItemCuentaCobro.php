@@ -28,14 +28,14 @@ class ItemCuentaCobro extends Model
     ];
 
     // ==================== RELACIONES ====================
-    
+
     public function cuentaCobro()
     {
         return $this->belongsTo(CuentaCobro::class, 'cuenta_cobro_id');
     }
 
     // ==================== EVENTOS ====================
-    
+
     protected static function boot()
     {
         parent::boot();
@@ -56,7 +56,7 @@ class ItemCuentaCobro extends Model
     }
 
     // ==================== MÉTODOS AUXILIARES ====================
-    
+
     protected function actualizarTotalCuentaCobro()
     {
         $cuentaCobro = $this->cuentaCobro;
@@ -64,7 +64,7 @@ class ItemCuentaCobro extends Model
             $total = $cuentaCobro->items()->sum('valor_total');
             $cuentaCobro->valor_bruto = round($total, 2);
             $cuentaCobro->save();
-            
+
             // Recalcular retenciones con el nuevo valor bruto
             $cuentaCobro->calcularRetenciones();
         }

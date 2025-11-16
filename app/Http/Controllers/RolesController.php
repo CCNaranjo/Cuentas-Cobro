@@ -19,13 +19,13 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('ver-roles')) {
             abort(403, 'No tienes permisos para ver roles');
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
-        
+
         $query = Rol::withCount(['permisos', 'usuarios']);
         
         if ($nivelUsuario == 2) {
@@ -33,9 +33,9 @@ class RolesController extends Controller
         } elseif ($nivelUsuario > 2) {
             $query->where('nivel_jerarquico', '>=', $nivelUsuario);
         }
-        
+
         $roles = $query->orderBy('nivel_jerarquico')->get();
-        
+
         return view('roles.index', compact('roles', 'nivelUsuario'));
     }
 
@@ -46,14 +46,14 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('crear-rol')) {
             abort(403, 'No tienes permisos para crear roles');
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
         $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
-        
+
         return view('roles.create', compact('modulos', 'nivelUsuario'));
     }
 
@@ -64,13 +64,13 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('crear-rol')) {
             return back()->withErrors(['error' => 'No tienes permisos para crear roles']);
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
-        
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|unique:roles,nombre|regex:/^[a-z_]+$/',
             'descripcion' => 'nullable|string',
@@ -78,7 +78,7 @@ class RolesController extends Controller
             'permisos' => 'nullable|array',
             'permisos.*' => 'exists:permisos,id',
         ]);
-        
+
         // VALIDACIÓN DE NIVEL JERÁRQUICO
         if ($nivelUsuario == 2) {
             if ($validated['nivel_jerarquico'] < 3) {
@@ -93,9 +93,9 @@ class RolesController extends Controller
                 ])->withInput();
             }
         }
-        
+
         DB::beginTransaction();
-        
+
         try {
             $rol = Rol::create([
                 'nombre' => $validated['nombre'],
@@ -107,29 +107,29 @@ class RolesController extends Controller
             if (!empty($validated['permisos'])) {
                 $permisosPermitidos = $this->obtenerIdsPermisosPermitidosParaNivel($validated['nivel_jerarquico']);
                 $permisosAAsignar = array_intersect($validated['permisos'], $permisosPermitidos);
-                
+
                 $rol->permisos()->attach($permisosAAsignar);
             }
-            
+
             DB::commit();
-            
+
             Log::info('Rol creado', [
                 'rol_id' => $rol->id,
                 'creado_por' => $user->id,
                 'nivel_jerarquico' => $validated['nivel_jerarquico']
             ]);
-            
+
             return redirect()->route('roles.index')
                 ->with('success', 'Rol creado exitosamente');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Error al crear rol', [
                 'error' => $e->getMessage(),
                 'usuario_id' => $user->id
             ]);
-            
+
             return back()->withErrors(['error' => 'Error al crear el rol: ' . $e->getMessage()])
                 ->withInput();
         }
@@ -142,11 +142,11 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('ver-roles')) {
             abort(403, 'No tienes permisos para ver roles');
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
         
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
@@ -157,7 +157,7 @@ class RolesController extends Controller
         
         $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
         $rol->load('permisos.modulo', 'usuarios');
-        
+
         return view('roles.show', compact('rol', 'modulos'));
     }
 
@@ -168,11 +168,11 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('asignar-permisos-rol')) {
             abort(403, 'No tienes permisos para editar roles');
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
         
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
@@ -185,10 +185,10 @@ class RolesController extends Controller
             return redirect()->route('roles.index')
                 ->withErrors(['error' => 'No se puede editar el rol de administrador global']);
         }
-        
+
         $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
         $permisosAsignados = $rol->permisos->pluck('id')->toArray();
-        
+
         return view('roles.edit', compact('rol', 'modulos', 'permisosAsignados', 'nivelUsuario'));
     }
 
@@ -199,11 +199,11 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('asignar-permisos-rol')) {
             return back()->withErrors(['error' => 'No tienes permisos para editar roles']);
         }
-        
+
         $nivelUsuario = $user->obtenerNivelJerarquico();
         
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
@@ -215,7 +215,7 @@ class RolesController extends Controller
         if ($rol->nombre === 'admin_global') {
             return back()->withErrors(['error' => 'No se puede editar el rol de administrador global']);
         }
-        
+
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|regex:/^[a-z_]+$/|unique:roles,nombre,' . $rol->id,
             'descripcion' => 'nullable|string',
@@ -237,9 +237,9 @@ class RolesController extends Controller
                 ])->withInput();
             }
         }
-        
+
         DB::beginTransaction();
-        
+
         try {
             $rol->update([
                 'nombre' => $validated['nombre'],
@@ -250,30 +250,30 @@ class RolesController extends Controller
             if (isset($validated['permisos'])) {
                 $permisosPermitidos = $this->obtenerIdsPermisosPermitidosParaNivel($validated['nivel_jerarquico']);
                 $permisosAAsignar = array_intersect($validated['permisos'], $permisosPermitidos);
-                
+
                 $rol->permisos()->sync($permisosAAsignar);
             } else {
                 $rol->permisos()->detach();
             }
-            
+
             DB::commit();
-            
+
             Log::info('Rol actualizado', [
                 'rol_id' => $rol->id,
                 'actualizado_por' => $user->id
             ]);
-            
+
             return redirect()->route('roles.index')
                 ->with('success', 'Rol actualizado exitosamente');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Error al actualizar rol', [
                 'error' => $e->getMessage(),
                 'rol_id' => $rol->id
             ]);
-            
+
             return back()->withErrors(['error' => 'Error al actualizar el rol'])
                 ->withInput();
         }
@@ -286,7 +286,7 @@ class RolesController extends Controller
     {
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        
+
         if (!$user->tienePermiso('gestionar-roles')) {
             abort(403, 'No tienes permisos para eliminar roles');
         }
@@ -298,24 +298,24 @@ class RolesController extends Controller
         if ($rol->usuarios()->count() > 0) {
             return back()->withErrors(['error' => 'No se puede eliminar el rol porque tiene usuarios asignados']);
         }
-        
+
         try {
             $rol->delete();
-            
+
             Log::info('Rol eliminado', [
                 'rol_id' => $rol->id,
                 'eliminado_por' => $user->id
             ]);
-            
+
             return redirect()->route('roles.index')
                 ->with('success', 'Rol eliminado exitosamente');
-                
+
         } catch (\Exception $e) {
             Log::error('Error al eliminar rol', [
                 'error' => $e->getMessage(),
                 'rol_id' => $rol->id
             ]);
-            
+
             return back()->withErrors(['error' => 'Error al eliminar el rol']);
         }
     }
