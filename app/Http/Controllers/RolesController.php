@@ -14,9 +14,6 @@ class RolesController extends Controller
 {
     /**
      * Mostrar lista de roles
-     * Nivel 1: Ve todos los roles
-     * Nivel 2: Ve solo roles de nivel 3+
-     * Nivel 3+: Ve solo roles de su nivel o inferior
      */
     public function index()
     {
@@ -30,8 +27,7 @@ class RolesController extends Controller
         $nivelUsuario = $user->obtenerNivelJerarquico();
 
         $query = Rol::withCount(['permisos', 'usuarios']);
-
-        // Filtrar según nivel
+        
         if ($nivelUsuario == 2) {
             $query->where('nivel_jerarquico', '>=', 3);
         } elseif ($nivelUsuario > 2) {
@@ -56,8 +52,6 @@ class RolesController extends Controller
         }
 
         $nivelUsuario = $user->obtenerNivelJerarquico();
-
-        // Obtener módulos y permisos según nivel
         $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
 
         return view('roles.create', compact('modulos', 'nivelUsuario'));
@@ -89,13 +83,13 @@ class RolesController extends Controller
         if ($nivelUsuario == 2) {
             if ($validated['nivel_jerarquico'] < 3) {
                 return back()->withErrors([
-                    'nivel_jerarquico' => 'Solo puedes crear roles de nivel 3 o superior'
+                    'nivel_jerarquico' => 'Solo puedes crear roles de nivel 3 o inferior'
                 ])->withInput();
             }
         } elseif ($nivelUsuario > 2) {
             if ($validated['nivel_jerarquico'] < $nivelUsuario) {
                 return back()->withErrors([
-                    'nivel_jerarquico' => 'Solo puedes crear roles de tu nivel o inferior'
+                    'nivel_jerarquico' => 'Solo puedes crear roles de tu nivel o superior'
                 ])->withInput();
             }
         }
@@ -109,8 +103,7 @@ class RolesController extends Controller
                 'nivel_jerarquico' => $validated['nivel_jerarquico'],
                 'es_sistema' => false,
             ]);
-
-            // Asignar permisos (validar que sean permitidos para este nivel)
+            
             if (!empty($validated['permisos'])) {
                 $permisosPermitidos = $this->obtenerIdsPermisosPermitidosParaNivel($validated['nivel_jerarquico']);
                 $permisosAAsignar = array_intersect($validated['permisos'], $permisosPermitidos);
@@ -155,15 +148,13 @@ class RolesController extends Controller
         }
 
         $nivelUsuario = $user->obtenerNivelJerarquico();
-
-        // Validar que puede ver este rol
+        
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
             abort(403, 'No tienes permisos para ver este rol');
         } elseif ($nivelUsuario > 2 && $rol->nivel_jerarquico < $nivelUsuario) {
             abort(403, 'No tienes permisos para ver este rol');
         }
-
-        // Obtener módulos y permisos según nivel
+        
         $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
         $rol->load('permisos.modulo', 'usuarios');
 
@@ -183,15 +174,13 @@ class RolesController extends Controller
         }
 
         $nivelUsuario = $user->obtenerNivelJerarquico();
-
-        // Validar que puede editar este rol
+        
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
             abort(403, 'No puedes editar roles de nivel inferior a 3');
         } elseif ($nivelUsuario > 2 && $rol->nivel_jerarquico < $nivelUsuario) {
             abort(403, 'No puedes editar roles de nivel superior al tuyo');
         }
-
-        // No permitir editar rol admin_global
+        
         if ($rol->nombre === 'admin_global') {
             return redirect()->route('roles.index')
                 ->withErrors(['error' => 'No se puede editar el rol de administrador global']);
@@ -216,15 +205,13 @@ class RolesController extends Controller
         }
 
         $nivelUsuario = $user->obtenerNivelJerarquico();
-
-        // Validar que puede editar este rol
+        
         if ($nivelUsuario == 2 && $rol->nivel_jerarquico < 3) {
             return back()->withErrors(['error' => 'No puedes editar roles de nivel inferior a 3']);
         } elseif ($nivelUsuario > 2 && $rol->nivel_jerarquico < $nivelUsuario) {
             return back()->withErrors(['error' => 'No puedes editar roles de nivel superior al tuyo']);
         }
-
-        // No permitir editar rol admin_global
+        
         if ($rol->nombre === 'admin_global') {
             return back()->withErrors(['error' => 'No se puede editar el rol de administrador global']);
         }
@@ -236,8 +223,7 @@ class RolesController extends Controller
             'permisos' => 'nullable|array',
             'permisos.*' => 'exists:permisos,id',
         ]);
-
-        // VALIDACIÓN DE NIVEL JERÁRQUICO
+        
         if ($nivelUsuario == 2) {
             if ($validated['nivel_jerarquico'] < 3) {
                 return back()->withErrors([
@@ -260,8 +246,7 @@ class RolesController extends Controller
                 'descripcion' => $validated['descripcion'],
                 'nivel_jerarquico' => $validated['nivel_jerarquico'],
             ]);
-
-            // Actualizar permisos (validar que sean permitidos)
+            
             if (isset($validated['permisos'])) {
                 $permisosPermitidos = $this->obtenerIdsPermisosPermitidosParaNivel($validated['nivel_jerarquico']);
                 $permisosAAsignar = array_intersect($validated['permisos'], $permisosPermitidos);
@@ -305,13 +290,11 @@ class RolesController extends Controller
         if (!$user->tienePermiso('gestionar-roles')) {
             abort(403, 'No tienes permisos para eliminar roles');
         }
-
-        // No permitir eliminar roles del sistema
+        
         if ($rol->es_sistema) {
             return back()->withErrors(['error' => 'No se pueden eliminar roles del sistema']);
         }
-
-        // No permitir eliminar roles con usuarios asignados
+        
         if ($rol->usuarios()->count() > 0) {
             return back()->withErrors(['error' => 'No se puede eliminar el rol porque tiene usuarios asignados']);
         }
@@ -337,21 +320,231 @@ class RolesController extends Controller
         }
     }
 
+    // ============================================
+    // GESTIÓN DE PERMISOS
+    // ============================================
+
+    /**
+     * Mostrar lista de permisos
+     */
+    public function indexPermisos()
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        if (!$user->tienePermiso('ver-permisos')) {
+            abort(403, 'No tienes permisos para ver permisos del sistema');
+        }
+        
+        $nivelUsuario = $user->obtenerNivelJerarquico();
+        
+        // Obtener módulos con sus permisos filtrados por nivel
+        $modulos = $this->obtenerModulosConPermisos($nivelUsuario);
+        
+        // Estadísticas
+        if ($nivelUsuario == 1) {
+            $totalPermisos = Permiso::count();
+        } else {
+            $totalPermisos = Permiso::where('es_organizacion', true)->count();
+        }
+        
+        $rolesConPermisos = Rol::has('permisos')->count();
+        
+        return view('roles.permisos_index', compact(
+            'modulos',
+            'totalPermisos',
+            'rolesConPermisos',
+            'nivelUsuario'
+        ));
+    }
+
+    /**
+     * Crear nuevo permiso
+     */
+    public function storePermiso(Request $request)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        if (!$user->tienePermiso('ver-permisos')) {
+            return back()->withErrors(['error' => 'No tienes permisos para crear permisos']);
+        }
+        
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'slug' => 'required|string|max:100|unique:permisos,slug|regex:/^[a-z\-]+$/',
+            'modulo_id' => 'required|exists:modulos,id',
+            'descripcion' => 'nullable|string|max:255',
+            'tipo' => 'required|in:lectura,escritura,eliminacion,accion',
+            'es_organizacion' => 'nullable|boolean',
+        ], [
+            'nombre.required' => 'El nombre del permiso es obligatorio',
+            'slug.required' => 'El slug es obligatorio',
+            'slug.unique' => 'Ya existe un permiso con este slug',
+            'slug.regex' => 'El slug solo puede contener letras minúsculas y guiones',
+            'modulo_id.required' => 'Debes seleccionar un módulo',
+            'modulo_id.exists' => 'El módulo seleccionado no existe',
+            'tipo.required' => 'Debes seleccionar un tipo de permiso',
+        ]);
+        
+        try {
+            $permiso = Permiso::create([
+                'nombre' => $validated['nombre'],
+                'slug' => $validated['slug'],
+                'modulo_id' => $validated['modulo_id'],
+                'descripcion' => $validated['descripcion'] ?? null,
+                'tipo' => $validated['tipo'],
+                'es_organizacion' => isset($validated['es_organizacion']) && $validated['es_organizacion'] ? true : null,
+            ]);
+            
+            Log::info('Permiso creado', [
+                'permiso_id' => $permiso->id,
+                'creado_por' => $user->id,
+                'slug' => $permiso->slug,
+                'es_organizacion' => $permiso->es_organizacion
+            ]);
+            
+            return redirect()->route('permisos.index')
+                ->with('success', 'Permiso creado exitosamente');
+                
+        } catch (\Exception $e) {
+            Log::error('Error al crear permiso', [
+                'error' => $e->getMessage(),
+                'usuario_id' => $user->id
+            ]);
+            
+            return back()->withErrors(['error' => 'Error al crear el permiso: ' . $e->getMessage()])
+                ->withInput();
+        }
+    }
+
+    /**
+     * Actualizar permiso existente
+     */
+    public function updatePermiso(Request $request, Permiso $permiso)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        if (!$user->tienePermiso('ver-permisos')) {
+            return back()->withErrors(['error' => 'No tienes permisos para editar permisos']);
+        }
+        
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'slug' => 'required|string|max:100|regex:/^[a-z\-]+$/|unique:permisos,slug,' . $permiso->id,
+            'modulo_id' => 'required|exists:modulos,id',
+            'descripcion' => 'nullable|string|max:255',
+            'tipo' => 'required|in:lectura,escritura,eliminacion,accion',
+            'es_organizacion' => 'nullable|boolean',
+        ], [
+            'nombre.required' => 'El nombre del permiso es obligatorio',
+            'slug.required' => 'El slug es obligatorio',
+            'slug.unique' => 'Ya existe un permiso con este slug',
+            'slug.regex' => 'El slug solo puede contener letras minúsculas y guiones',
+            'modulo_id.required' => 'Debes seleccionar un módulo',
+            'tipo.required' => 'Debes seleccionar un tipo de permiso',
+        ]);
+        
+        try {
+            $permiso->update([
+                'nombre' => $validated['nombre'],
+                'slug' => $validated['slug'],
+                'modulo_id' => $validated['modulo_id'],
+                'descripcion' => $validated['descripcion'] ?? null,
+                'tipo' => $validated['tipo'],
+                'es_organizacion' => isset($validated['es_organizacion']) && $validated['es_organizacion'] ? true : null,
+            ]);
+            
+            Log::info('Permiso actualizado', [
+                'permiso_id' => $permiso->id,
+                'actualizado_por' => $user->id,
+                'es_organizacion' => $permiso->es_organizacion
+            ]);
+            
+            return redirect()->route('permisos.index')
+                ->with('success', 'Permiso actualizado exitosamente');
+                
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar permiso', [
+                'error' => $e->getMessage(),
+                'permiso_id' => $permiso->id
+            ]);
+            
+            return back()->withErrors(['error' => 'Error al actualizar el permiso'])
+                ->withInput();
+        }
+    }
+
+    /**
+     * Eliminar permiso
+     */
+    public function destroyPermiso(Permiso $permiso)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+        
+        if (!$user->tienePermiso('ver-permisos')) {
+            abort(403, 'No tienes permisos para eliminar permisos');
+        }
+        
+        // Verificar que el permiso no esté asignado a ningún rol
+        if ($permiso->roles()->count() > 0) {
+            return back()->withErrors([
+                'error' => 'No se puede eliminar el permiso porque está asignado a ' . 
+                          $permiso->roles()->count() . ' rol(es)'
+            ]);
+        }
+        
+        try {
+            $slug = $permiso->slug;
+            $permiso->delete();
+            
+            Log::info('Permiso eliminado', [
+                'permiso_slug' => $slug,
+                'eliminado_por' => $user->id
+            ]);
+            
+            return redirect()->route('permisos.index')
+                ->with('success', 'Permiso eliminado exitosamente');
+                
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar permiso', [
+                'error' => $e->getMessage(),
+                'permiso_id' => $permiso->id
+            ]);
+            
+            return back()->withErrors(['error' => 'Error al eliminar el permiso']);
+        }
+    }
+
+    // ============================================
+    // MÉTODOS AUXILIARES
+    // ============================================
+
     /**
      * Obtener módulos con permisos según nivel jerárquico
      */
     private function obtenerModulosConPermisos(int $nivel)
     {
-        $slugsPermitidos = $this->getSlugsPermitidosPorNivel($nivel);
-
-        $modulos = Modulo::with(['permisos' => function ($query) use ($slugsPermitidos) {
-            $query->whereIn('slug', $slugsPermitidos)->orderBy('nombre');
+        $modulos = Modulo::with(['permisos' => function($query) use ($nivel) {
+            // Filtrar permisos según nivel
+            if ($nivel == 1) {
+                // Admin Global ve TODOS los permisos
+                $query->orderBy('nombre');
+            } elseif ($nivel == 2) {
+                // Admin Organización solo ve permisos con es_organizacion = true
+                $query->where('es_organizacion', true)->orderBy('nombre');
+            } else {
+                // Nivel 3+ ve permisos de organización
+                $query->where('es_organizacion', true)->orderBy('nombre');
+            }
         }])->where('activo', true)
           ->orderBy('orden')
           ->get();
-
-        // Filtrar módulos que tienen al menos un permiso
-        return $modulos->filter(function ($modulo) {
+        
+        // Filtrar módulos que tienen al menos un permiso accesible
+        return $modulos->filter(function($modulo) {
             return $modulo->permisos->count() > 0;
         });
     }
@@ -361,83 +554,15 @@ class RolesController extends Controller
      */
     private function obtenerIdsPermisosPermitidosParaNivel(int $nivel)
     {
-        $slugsPermitidos = $this->getSlugsPermitidosPorNivel($nivel);
-
-        return Permiso::whereIn('slug', $slugsPermitidos)
-            ->pluck('id')
-            ->toArray();
-    }
-
-    /**
-     * Matriz de permisos por nivel jerárquico (según tabla proporcionada)
-     */
-    private function getSlugsPermitidosPorNivel(int $nivel)
-    {
-        $matriz = [
-            1 => [ // Admin Global - TODOS los permisos
-                'ver-dashboard', 'ver-estadisticas-globales',
-                'ver-organizaciones', 'crear-organizacion', 'editar-organizacion', 'eliminar-organizacion',
-                'asignar-admin-organizacion', 'seleccionar-organizacion-contexto',
-                'ver-usuarios', 'crear-usuario', 'editar-usuario', 'asignar-rol', 'eliminar-usuario',
-                'cambiar-estado-usuario', 'gestionar-usuarios',
-                'ver-roles', 'crear-rol', 'asignar-permisos-rol', 'gestionar-roles', 'ver-permisos',
-                'ver-todos-contratos', 'ver-mis-contratos', 'crear-contrato', 'editar-contrato',
-                'eliminar-contrato', 'vincular-contratista', 'cambiar-estado-contrato',
-                'ver-informacion-contratos', 'gestionar-contratos', 'validar-contratos', 'gestionar-contratista',
-                'ver-todas-cuentas', 'ver-mis-cuentas', 'crear-cuenta-cobro', 'editar-cuenta-cobro',
-                'radicar-cuenta-cobro', 'revisar-cuenta-cobro', 'aprobar-cuenta-cobro', 'rechazar-cuenta-cobro',
-                'registrar-pago', 'anular-cuenta-cobro', 'ver-historial-cuenta', 'aprobar-finalmente',
-                'cargar-documentos', 'ver-documentos',
-                'autorizar-pago', 'procesar-pago', 'generar-cheques', 'transferir-banco',
-                'confirmar-pagos', 'generar-ordenes-pago',
-                'ver-presupuesto', 'gestionar-presupuesto', 'aprobacion-final',
-                'ver-reportes-globales', 'ver-reportes-organizacion', 'ver-reportes-financieros',
-                'exportar-reportes', 'ver-reportes-contratos',
-                'agregar-comentarios', 'solicitar-correcciones',
-                'ver-configuracion', 'editar-configuracion-global',
-            ],
-            2 => [ // Admin Organización
-                'ver-dashboard',
-                'ver-usuarios', 'crear-usuario', 'editar-usuario', 'asignar-rol', 'eliminar-usuario', 'cambiar-estado-usuario',
-                'ver-roles', 'crear-rol', 'asignar-permisos-rol', 'gestionar-roles-organizacion',
-                'ver-todos-contratos', 'crear-contrato', 'editar-contrato', 'vincular-contratista',
-                'cambiar-estado-contrato', 'ver-informacion-contratos', 'gestionar-contratista',
-                'ver-todas-cuentas', 'rechazar-cuenta-cobro', 'anular-cuenta-cobro', 'ver-historial-cuenta',
-                'cargar-documentos', 'ver-documentos',
-                'autorizar-pago',
-                'ver-presupuesto', 'gestionar-presupuesto',
-                'ver-reportes-organizacion', 'exportar-reportes', 'ver-reportes-contratos',
-                'agregar-comentarios', 'solicitar-correcciones',
-                'ver-configuracion', 'editar-configuracion-organizacion',
-            ],
-            3 => [ // Gestión Pública (Supervisores, Ordenadores, Tesoreros)
-                'ver-dashboard',
-                'ver-roles',
-                'ver-todos-contratos', 'ver-mis-contratos', 'cambiar-estado-contrato',
-                'ver-informacion-contratos', 'validar-contratos',
-                'ver-todas-cuentas', 'revisar-cuenta-cobro', 'aprobar-cuenta-cobro', 'rechazar-cuenta-cobro',
-                'registrar-pago', 'ver-historial-cuenta', 'aprobar-finalmente',
-                'cargar-documentos', 'ver-documentos',
-                'autorizar-pago', 'procesar-pago', 'generar-cheques', 'transferir-banco',
-                'confirmar-pagos', 'generar-ordenes-pago',
-                'ver-presupuesto', 'aprobacion-final',
-                'ver-reportes-financieros', 'exportar-reportes', 'ver-reportes-contratos',
-                'agregar-comentarios', 'solicitar-correcciones',
-            ],
-            4 => [ // Contratista
-                'ver-dashboard',
-                'ver-mis-contratos', 'ver-informacion-contratos',
-                'ver-mis-cuentas', 'crear-cuenta-cobro', 'editar-cuenta-cobro', 'radicar-cuenta-cobro',
-                'ver-historial-cuenta',
-                'cargar-documentos', 'ver-documentos',
-                'agregar-comentarios',
-            ],
-            5 => [ // Usuario Común
-                'ver-dashboard',
-                'ver-organizaciones',
-            ],
-        ];
-
-        return $matriz[$nivel] ?? [];
+        if ($nivel == 1) {
+            // Admin Global: todos los permisos
+            return Permiso::pluck('id')->toArray();
+        } elseif ($nivel == 2) {
+            // Admin Organización: solo permisos con es_organizacion = true
+            return Permiso::where('es_organizacion', true)->pluck('id')->toArray();
+        } else {
+            // Nivel 3+: permisos de organización
+            return Permiso::where('es_organizacion', true)->pluck('id')->toArray();
+        }
     }
 }

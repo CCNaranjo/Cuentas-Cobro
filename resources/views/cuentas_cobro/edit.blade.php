@@ -188,13 +188,35 @@
                                         <!-- Los items se agregarán aquí dinámicamente -->
                                     </div>
 
-                                    <!-- Mensaje si no hay items -->
-                                    <div id="noItemsMessage" class="text-center py-8 bg-gray-50 rounded-lg" style="display: none;">
-                                        <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
-                                        <p class="text-secondary">No hay items agregados</p>
-                                        <p class="text-sm text-gray-400 mt-1">Haga clic en "Agregar Item" para comenzar</p>
-                                    </div>
-                                </div>
+                            <!-- Período Inicio -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Inicio <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date"
+                                       name="periodo_inicio"
+                                       value="{{ old('periodo_inicio', $cuentaCobro->periodo_inicio) }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_inicio') border-red-500 @enderror">
+                                @error('periodo_inicio')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Período Fin -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Fin <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date"
+                                       name="periodo_fin"
+                                       value="{{ old('periodo_fin', $cuentaCobro->periodo_fin) }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_fin') border-red-500 @enderror">
+                                @error('periodo_fin')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
 
                                 <!-- Resumen de Valores -->
                                 <div class="bg-gradient-to-br from-primary to-primary-dark rounded-xl shadow-sm p-6 mb-6 text-white">
@@ -461,11 +483,44 @@
             }
         }
 
-        // Cerrar modal al hacer click fuera
-        document.getElementById('modalSubirArchivo')?.addEventListener('click', function (e) {
-            if (e.target === this) {
-                cerrarModalSubirArchivo();
-            }
+        // Listener para cambio de contrato
+        document.getElementById('contrato_id').addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
+            porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
+            calcularTotales();
+            guardarBorrador();
+        });
+
+        // Guardar automáticamente cuando se modifican campos
+        configurarAutoguardado();
+    });
+
+    // Guardar borrador en localStorage
+    function guardarBorrador() {
+        const datos = {
+            contrato_id: document.querySelector('[name="contrato_id"]').value,
+            fecha_radicacion: document.querySelector('[name="fecha_radicacion"]').value,
+            periodo_inicio: document.querySelector('[name="periodo_inicio"]').value,
+            periodo_fin: document.querySelector('[name="periodo_fin"]').value,
+            observaciones: document.querySelector('[name="observaciones"]').value,
+            items: [],
+            itemCounter: itemCounter,
+            porcentajeRetencion: porcentajeRetencion,
+            porcentajeEstampilla: porcentajeEstampilla,
+            timestamp: new Date().toISOString()
+        };
+
+        // Guardar items
+        document.querySelectorAll('.item-row').forEach((itemRow, index) => {
+            const itemId = itemRow.getAttribute('data-item');
+            datos.items.push({
+                itemId: itemId,
+                descripcion: itemRow.querySelector('.item-descripcion').value,
+                cantidad: itemRow.querySelector('.item-cantidad').value,
+                valor_unitario: itemRow.querySelector('.item-valor-unitario').value,
+                porcentaje_avance: itemRow.querySelector('[name*="[porcentaje_avance]"]').value
+            });
         });
 
         // Inicializar al cargar
@@ -543,8 +598,12 @@
         function restaurarDatosPersistidos() {
             const datosGuardados = localStorage.getItem(STORAGE_KEY);
 
-            if (!datosGuardados) {
-                return false;
+            if (datos.periodo_inicio) {
+                document.querySelector('[name="periodo_inicio"]').value = datos.periodo_inicio;
+            }
+
+            if (datos.periodo_fin) {
+                document.querySelector('[name="periodo_fin"]').value = datos.periodo_fin;
             }
 
             try {
@@ -599,18 +658,39 @@
             const fecha = new Date(timestamp);
             const fechaFormateada = fecha.toLocaleString('es-CO');
 
-            const notificacion = document.createElement('div');
-            notificacion.className = 'mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4';
-            notificacion.innerHTML = `
-                <div class="flex items-start justify-between">
-                    <div class="flex items-start">
-                        <i class="fas fa-info-circle text-blue-500 text-xl mr-3 mt-0.5"></i>
-                        <div class="flex-1">
-                            <h3 class="font-semibold text-blue-800 mb-1">Borrador restaurado</h3>
-                            <p class="text-sm text-blue-700">
-                                Se han restaurado los datos guardados el ${fechaFormateada}
-                            </p>
-                        </div>
+            // Restaurar items
+            if (datos.items && datos.items.length > 0) {
+                datos.items.forEach(item => {
+                    agregarItemRestaurado(item);
+                });
+            } else {
+                document.getElementById('noItemsMessage').style.display = 'block';
+            }
+
+            calcularTotales();
+            return true;
+        } catch (error) {
+            console.error('Error al restaurar datos:', error);
+            return false;
+        }
+    }
+
+    // Mostrar notificación de restauración
+    function mostrarNotificacionRestauracion(timestamp) {
+        const fecha = new Date(timestamp);
+        const fechaFormateada = fecha.toLocaleString('es-CO');
+
+        const notificacion = document.createElement('div');
+        notificacion.className = 'mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4';
+        notificacion.innerHTML = `
+            <div class="flex items-start justify-between">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 text-xl mr-3 mt-0.5"></i>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-blue-800 mb-1">Borrador restaurado</h3>
+                        <p class="text-sm text-blue-700">
+                            Se han restaurado los datos guardados el ${fechaFormateada}
+                        </p>
                     </div>
                     <button type="button" onclick="limpiarBorrador()" class="text-blue-600 hover:text-blue-800 text-sm font-semibold ml-4">
                         Descartar borrador
@@ -618,37 +698,49 @@
                 </div>
             `;
 
-            // Insertar después de la alerta de estado
-            const alertaEstado = document.querySelector('.bg-yellow-50');
-            if (alertaEstado) {
-                alertaEstado.after(notificacion);
-            }
+        // Insertar después del header
+        const header = document.querySelector('.mb-6');
+        header.after(notificacion);
+    }
+
+    // Limpiar borrador
+    function limpiarBorrador() {
+        if (confirm('¿Está seguro de que desea descartar el borrador guardado y empezar de nuevo?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
         }
+    }
 
-        // Limpiar borrador
-        function limpiarBorrador() {
-            if (confirm('¿Está seguro de que desea descartar el borrador guardado y restaurar los datos originales?')) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
-            }
-        }
+    // Agregar item restaurado
+    function agregarItemRestaurado(itemData) {
+        const container = document.getElementById('itemsContainer');
+        const noItemsMsg = document.getElementById('noItemsMessage');
+        const itemId = itemData.itemId;
 
-        // Agregar item restaurado
-        function agregarItemRestaurado(itemData) {
-            const container = document.getElementById('itemsContainer');
-            const noItemsMsg = document.getElementById('noItemsMessage');
-            const itemId = itemData.itemId;
+        const itemHTML = `
+            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemId}">
+                <input type="hidden" name="items[${itemId}][id]" value="${itemData.id || ''}">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Item #${itemId}</h3>
+                    <button type="button"
+                            onclick="eliminarItem(${itemId})"
+                            class="text-red-600 hover:text-red-800 transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
 
-            const itemHTML = `
-                <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemId}">
-                    ${itemData.id ? `<input type="hidden" name="items[${itemId}][id]" value="${itemData.id}">` : ''}
-                    <div class="flex items-start justify-between mb-4">
-                        <h3 class="font-semibold text-gray-800">Item #${itemId}</h3>
-                        <button type="button"
-                                onclick="eliminarItem(${itemId})"
-                                class="text-red-600 hover:text-red-800 transition-colors">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <!-- Descripción -->
+                    <div class="md:col-span-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Descripción <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="items[${itemId}][descripcion]"
+                                  rows="2"
+                                  required
+                                  placeholder="Descripción del trabajo realizado..."
+                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                  oninput="guardarBorrador()">${itemData.descripcion || ''}</textarea>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -723,7 +815,42 @@
                         </div>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', itemHTML);
+        noItemsMsg.style.display = 'none';
+
+        // Calcular valor del item
+        calcularValorItem(itemId);
+    }
+
+    // Configurar autoguardado
+    function configurarAutoguardado() {
+        // Guardar al cambiar campos generales
+        document.querySelector('[name="contrato_id"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="fecha_radicacion"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_inicio"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_fin"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="observaciones"]').addEventListener('input', guardarBorrador);
+    }
+
+    function agregarItemExistente(item) {
+        itemCounter++;
+        const container = document.getElementById('itemsContainer');
+        const noItemsMsg = document.getElementById('noItemsMessage');
+
+        const itemHTML = `
+            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemCounter}">
+                <input type="hidden" name="items[${itemCounter}][id]" value="${item.id}">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Item #${itemCounter}</h3>
+                    <button type="button"
+                            onclick="eliminarItem(${itemCounter})"
+                            class="text-red-600 hover:text-red-800 transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
 
             container.insertAdjacentHTML('beforeend', itemHTML);
             noItemsMsg.style.display = 'none';
@@ -984,23 +1111,9 @@
             document.getElementById('displayValorNeto').textContent = formatearMoneda(valorNeto);
         }
 
-        function formatearMoneda(valor) {
-            return '$' + Math.round(valor).toLocaleString('es-CO');
-        }
-
-        // Validación antes de enviar
-        document.getElementById('formCuentaCobro').addEventListener('submit', function(e) {
-            const itemsCount = document.querySelectorAll('.item-row').length;
-
-            if (itemsCount === 0) {
-                e.preventDefault();
-                alert('Debe agregar al menos un item a la cuenta de cobro');
-                return false;
-            }
-
-            // Limpiar el borrador al enviar exitosamente
-            localStorage.removeItem(STORAGE_KEY);
-        });
-    </script>
-    @endpush
+        // Limpiar el borrador al enviar exitosamente
+        localStorage.removeItem(STORAGE_KEY);
+    });
+</script>
+@endpush
 @endsection

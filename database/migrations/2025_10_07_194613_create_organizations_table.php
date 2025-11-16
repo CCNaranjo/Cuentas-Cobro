@@ -52,6 +52,7 @@ return new class () extends Migration {
             $table->foreignId('supervisor_id')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->text('objeto_contractual');
             $table->decimal('valor_total', 15, 2);
+            $table->decimal('valor_pagado', 15, 2)->default(0);
             $table->date('fecha_inicio');
             $table->date('fecha_fin');
             $table->decimal('porcentaje_retencion_fuente', 5, 2)->default(0);

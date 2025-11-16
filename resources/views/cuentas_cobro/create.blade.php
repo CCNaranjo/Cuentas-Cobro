@@ -675,26 +675,40 @@
                                        class="item-valor-unitario w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-right">
                             </div>
 
-                            <!-- % Avance -->
+                            <!-- Período Inicio -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    % Avance
+                                    Período Inicio <span class="text-red-500">*</span>
                                 </label>
-                                <input type="number"
-                                       name="items[${itemId}][porcentaje_avance]"
-                                       step="0.01"
-                                       min="0"
-                                       max="100"
-                                       value="${itemData.porcentaje_avance || ''}"
-                                       placeholder="0"
-                                       oninput="guardarBorrador()"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-center">
+                                <input type="date" 
+                                       name="periodo_inicio" 
+                                       value="{{ old('periodo_inicio') }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_inicio') border-red-500 @enderror">
+                                @error('periodo_inicio')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
                             </div>
 
-                            <!-- Valor Total -->
+                            <!-- Período Fin -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Fin <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date" 
+                                       name="periodo_fin" 
+                                       value="{{ old('periodo_fin') }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_fin') border-red-500 @enderror">
+                                @error('periodo_fin')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Observaciones -->
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Valor Total
+                                    Observaciones
                                 </label>
                                 <input type="text"
                                        id="valorTotal${itemId}"
@@ -818,29 +832,109 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
+                </form>
+            </div>
+        </main>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    let itemCounter = 0;
+    let porcentajeRetencion = 0;
+    let porcentajeEstampilla = 0;
+    const STORAGE_KEY = 'cuentaCobro_create_draft';
+
+    // Agregar primer item al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        // Intentar restaurar datos guardados
+        restaurarDatosPersistidos();
+
+        // Si no hay items restaurados, agregar uno vacío
+        if (document.querySelectorAll('.item-row').length === 0) {
+            agregarItem();
+        }
+
+        // Listener para cambio de contrato
+        document.getElementById('contrato_id').addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
+            porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
+            calcularTotales();
+            guardarBorrador();
+        });
+
+        // Guardar automáticamente cuando se modifican campos
+        configurarAutoguardado();
+    });
+
+    // Guardar borrador en localStorage
+    function guardarBorrador() {
+        const datos = {
+            contrato_id: document.querySelector('[name="contrato_id"]').value,
+            fecha_radicacion: document.querySelector('[name="fecha_radicacion"]').value,
+            periodo_inicio: document.querySelector('[name="periodo_inicio"]').value,
+            periodo_fin: document.querySelector('[name="periodo_fin"]').value,
+            observaciones: document.querySelector('[name="observaciones"]').value,
+            items: [],
+            itemCounter: itemCounter,
+            porcentajeRetencion: porcentajeRetencion,
+            porcentajeEstampilla: porcentajeEstampilla,
+            timestamp: new Date().toISOString()
+        };
+
+        // Guardar items
+        document.querySelectorAll('.item-row').forEach((itemRow, index) => {
+            const itemId = itemRow.getAttribute('data-item');
+            datos.items.push({
+                itemId: itemId,
+                descripcion: itemRow.querySelector('.item-descripcion').value,
+                cantidad: itemRow.querySelector('.item-cantidad').value,
+                valor_unitario: itemRow.querySelector('.item-valor-unitario').value,
+                porcentaje_avance: itemRow.querySelector('[name*="[porcentaje_avance]"]').value
+            });
+        });
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+        console.log('Borrador guardado automáticamente');
+    }
+
+    // Restaurar datos persistidos
+    function restaurarDatosPersistidos() {
+        const datosGuardados = localStorage.getItem(STORAGE_KEY);
+
+        if (!datosGuardados) {
+            return;
+        }
+
+        try {
+            const datos = JSON.parse(datosGuardados);
+
+            // Mostrar notificación de restauración
+            mostrarNotificacionRestauracion(datos.timestamp);
+
+            // Restaurar campos generales
+            if (datos.contrato_id) {
+                const contratoSelect = document.querySelector('[name="contrato_id"]');
+                contratoSelect.value = datos.contrato_id;
+
+                // Cargar porcentajes del contrato
+                const option = contratoSelect.options[contratoSelect.selectedIndex];
+                porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
+                porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
+            }
 
                 container.insertAdjacentHTML('beforeend', itemHTML);
                 noItemsMsg.style.display = 'none';
                 guardarBorrador();
             }
 
-            function eliminarItem(itemId) {
-                const item = document.querySelector(`[data-item="${itemId}"]`);
-                if (item) {
-                    item.remove();
-                    calcularTotales();
+            if (datos.periodo_inicio) {
+                document.querySelector('[name="periodo_inicio"]').value = datos.periodo_inicio;
+            }
 
-                    // Mostrar mensaje si no hay items
-                    const container = document.getElementById('itemsContainer');
-                    const noItemsMsg = document.getElementById('noItemsMessage');
-                    if (container.children.length === 0) {
-                        noItemsMsg.style.display = 'block';
-                    }
-
-                    guardarBorrador();
-                }
+            if (datos.periodo_fin) {
+                document.querySelector('[name="periodo_fin"]').value = datos.periodo_fin;
             }
 
             function calcularValorItem(itemId) {
@@ -882,7 +976,52 @@
                 return '$' + Math.round(valor).toLocaleString('es-CO');
             }
 
-            // ==================== ENVÍO DEL FORMULARIO ====================
+                    <!-- Valor Total -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Valor Total
+                        </label>
+                        <input type="text"
+                               id="valorTotal${itemId}"
+                               readonly
+                               class="item-valor-total w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg font-semibold text-green-600">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', itemHTML);
+        noItemsMsg.style.display = 'none';
+
+        // Calcular valor del item
+        calcularValorItem(itemId);
+    }
+
+    // Configurar autoguardado
+    function configurarAutoguardado() {
+        // Guardar al cambiar campos generales
+        document.querySelector('[name="contrato_id"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="fecha_radicacion"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_inicio"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_fin"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="observaciones"]').addEventListener('input', guardarBorrador);
+    }
+
+    function agregarItem() {
+        itemCounter++;
+        const container = document.getElementById('itemsContainer');
+        const noItemsMsg = document.getElementById('noItemsMessage');
+
+        const itemHTML = `
+            <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemCounter}">
+                <div class="flex items-start justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Item #${itemCounter}</h3>
+                    <button type="button"
+                            onclick="eliminarItem(${itemCounter})"
+                            class="text-red-600 hover:text-red-800 transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
 
             // Validación y envío con archivos
             document.getElementById('formCuentaCobro').addEventListener('submit', function(e) {

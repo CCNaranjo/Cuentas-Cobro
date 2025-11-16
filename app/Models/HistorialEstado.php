@@ -44,19 +44,9 @@ class HistorialEstado extends Model
     }
 
     protected function getNombreEstado($estado)
-    {
-        $estados = [
-            'borrador' => 'Borrador',
-            'radicada' => 'Radicada',
-            'en_revision' => 'En Revisión',
-            'aprobada' => 'Aprobada',
-            'rechazada' => 'Rechazada',
-            'pagada' => 'Pagada',
-            'anulada' => 'Anulada',
-        ];
-
-        return $estados[$estado] ?? $estado;
-    }
+{
+    return CuentaCobro::ESTADOS[$estado]['nombre'] ?? ucfirst(str_replace('_', ' ', $estado));
+}
 
     public function getTiempoCambioAttribute()
     {

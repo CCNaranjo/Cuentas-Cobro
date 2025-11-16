@@ -10,31 +10,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ContratoController extends Controller
 {
     /**
-     * Listar contratos según rol
+     * Listar contratos según rol y permisos
+     * IMPLEMENTACIÓN DE SEGMENTACIÓN POR ROLES
      */
     public function index(Request $request)
     {
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
 
+        // Construir query base con segmentación
         $query = Contrato::with(['organizacion', 'contratista', 'supervisor'])
-            ->where('organizacion_id', $organizacionId);
-
-        // Filtrar según rol y permisos
-        if (!$user->tienePermiso('ver-todos-contratos', $organizacionId)) {
-            if ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('contratista_id', $user->id)
-                        ->orWhere('supervisor_id', $user->id);
-                });
-            } else {
-                abort(403, 'No tienes permiso para ver contratos');
-            }
-        }
+            ->accesiblesParaUsuario($user, $organizacionId);
 
         // Filtros adicionales
         if ($request->filled('search')) {
@@ -61,7 +53,7 @@ class ContratoController extends Controller
 
         $organizacion = Organizacion::find($organizacionId);
 
-        // Contratistas y supervisores para filtros
+        // Contratistas y supervisores para filtros (solo los que el usuario puede ver)
         $contratistas = Usuario::whereHas('contratosComoContratista', function ($q) use ($organizacionId) {
             $q->where('organizacion_id', $organizacionId);
         })->get();
@@ -78,7 +70,15 @@ class ContratoController extends Controller
      */
     public function create(Request $request)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
         $organizacionId = $request->organizacion_id ?? session('organizacion_actual');
+
+        // Verificar permiso
+        if (!$user->tienePermiso('crear-contrato', $organizacionId)) {
+            abort(403, 'No tienes permiso para crear contratos');
+        }
+
         $organizacion = Organizacion::findOrFail($organizacionId);
 
         // Obtener supervisores y contratistas
@@ -93,6 +93,14 @@ class ContratoController extends Controller
      */
     public function store(Request $request)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        // Verificar permiso
+        if (!$user->tienePermiso('crear-contrato', $request->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para crear contratos'])->withInput();
+        }
+
         $validated = $request->validate([
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato',
             'organizacion_id' => 'required|exists:organizaciones,id',
@@ -108,6 +116,7 @@ class ContratoController extends Controller
         ]);
 
         $validated['vinculado_por'] = Auth::id();
+        $validated['valor_pagado'] = 0; // Inicializar en 0
 
         // Si se asigna contratista, cambiar estado a activo
         if (!empty($validated['contratista_id']) && $validated['estado'] == 'borrador') {
@@ -167,13 +176,19 @@ class ContratoController extends Controller
 
             DB::commit();
 
+            Log::info('Contrato creado', [
+                'contrato_id' => $contrato->id,
+                'creado_por' => $user->id,
+                'organizacion_id' => $contrato->organizacion_id
+            ]);
+
             return redirect()->route('contratos.show', $contrato)
                 ->with('success', 'Contrato creado exitosamente.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error al crear contrato: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            Log::error('Error al crear contrato: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
 
             return back()->with('error', 'Error al crear el contrato: ' . $e->getMessage())->withInput();
         }
@@ -181,30 +196,22 @@ class ContratoController extends Controller
 
     /**
      * Mostrar detalle del contrato
+     * VERIFICACIÓN DE ACCESO POR ROL
      */
     public function show(Contrato $contrato)
     {
-        $contrato->load(['organizacion', 'contratista', 'supervisor', 'vinculadoPor']);
-
-        // Verificar permisos
         /** @var \App\Models\Usuario $user */
         $user = Auth::user();
-        $organizacionId = $contrato->organizacion_id;
 
-        if (
-            !$user->tienePermiso('ver-todos-contratos', $organizacionId) &&
-            $contrato->contratista_id != $user->id &&
-            $contrato->supervisor_id != $user->id
-        ) {
+        // Verificar acceso usando el método del modelo
+        if (!$contrato->usuarioPuedeVer($user)) {
             abort(403, 'No tienes acceso a este contrato');
         }
 
-        // Calcular estadísticas
-        $estadisticas = [
-            'valor_cobrado' => 0, // Por implementar cuando tengas cuentas de cobro
-            'valor_disponible' => $contrato->valor_total,
-            'porcentaje_ejecucion' => 0,
-        ];
+        $contrato->load(['organizacion', 'contratista', 'supervisor', 'vinculadoPor', 'archivos.subidoPor']);
+
+        // Obtener estadísticas financieras actualizadas
+        $estadisticas = $contrato->getEstadisticasFinancieras();
 
         return view('contratos.show', compact('contrato', 'estadisticas'));
     }
@@ -214,7 +221,7 @@ class ContratoController extends Controller
      */
     public function edit(Contrato $contrato)
     {
-        // Verificar permisos de edición
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
         $organizacionId = $contrato->organizacion_id;
 
@@ -234,6 +241,13 @@ class ContratoController extends Controller
      */
     public function update(Request $request, Contrato $contrato)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        if (!$user->tienePermiso('editar-contrato', $contrato->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para editar contratos']);
+        }
+
         $validated = $request->validate([
             'numero_contrato' => 'required|string|unique:contratos,numero_contrato,' . $contrato->id,
             'supervisor_id' => 'required|exists:usuarios,id',
@@ -249,6 +263,11 @@ class ContratoController extends Controller
 
         $contrato->update($validated);
 
+        Log::info('Contrato actualizado', [
+            'contrato_id' => $contrato->id,
+            'actualizado_por' => $user->id
+        ]);
+
         return redirect()->route('contratos.show', $contrato)
             ->with('success', 'Contrato actualizado exitosamente');
     }
@@ -258,6 +277,13 @@ class ContratoController extends Controller
      */
     public function vincularContratista(Request $request, Contrato $contrato)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        if (!$user->tienePermiso('vincular-contratista', $contrato->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para vincular contratistas']);
+        }
+
         $validated = $request->validate([
             'contratista_id' => 'required|exists:usuarios,id',
         ]);
@@ -266,8 +292,6 @@ class ContratoController extends Controller
         if ($contrato->contratista_id) {
             return back()->with('error', 'Este contrato ya tiene un contratista asignado');
         }
-
-        $contratista = Usuario::findOrFail($validated['contratista_id']);
 
         // Actualizar contrato
         $contrato->update([
@@ -302,12 +326,16 @@ class ContratoController extends Controller
      */
     public function cambiarSupervisor(Request $request, Contrato $contrato)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        if (!$user->tienePermiso('editar-contrato', $contrato->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para cambiar supervisor']);
+        }
+
         $validated = $request->validate([
             'supervisor_id' => 'required|exists:usuarios,id',
         ]);
-
-        // Verificar que el nuevo supervisor tiene el rol correcto
-        $supervisor = Usuario::findOrFail($validated['supervisor_id']);
 
         $contrato->update(['supervisor_id' => $validated['supervisor_id']]);
 
@@ -319,6 +347,13 @@ class ContratoController extends Controller
      */
     public function cambiarEstado(Request $request, Contrato $contrato)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        if (!$user->tienePermiso('cambiar-estado-contrato', $contrato->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para cambiar el estado del contrato']);
+        }
+
         $validated = $request->validate([
             'estado' => 'required|in:activo,suspendido,terminado,liquidado',
             'observaciones' => 'nullable|string',
@@ -326,7 +361,11 @@ class ContratoController extends Controller
 
         $contrato->update(['estado' => $validated['estado']]);
 
-        // Aquí puedes agregar lógica para registrar en historial o notificar
+        Log::info('Estado de contrato cambiado', [
+            'contrato_id' => $contrato->id,
+            'nuevo_estado' => $validated['estado'],
+            'cambiado_por' => $user->id
+        ]);
 
         return back()->with('success', 'Estado del contrato actualizado exitosamente');
     }
@@ -336,8 +375,15 @@ class ContratoController extends Controller
      */
     public function subirArchivo(Request $request, Contrato $contrato)
     {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        if (!$user->tienePermiso('cargar-documentos', $contrato->organizacion_id)) {
+            return back()->withErrors(['error' => 'No tienes permiso para subir archivos']);
+        }
+
         $validated = $request->validate([
-            'archivo' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240', // Max 10MB
+            'archivo' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
             'tipo_documento' => 'required|in:contrato_firmado,adicion,suspension,acta_inicio,acta_liquidacion,otro',
             'descripcion' => 'nullable|string|max:500',
         ]);
@@ -345,22 +391,18 @@ class ContratoController extends Controller
         try {
             $archivo = $request->file('archivo');
 
-            // Generar nombre único para el archivo
             $nombreOriginal = $archivo->getClientOriginalName();
             $extension = $archivo->getClientOriginalExtension();
             $nombreArchivo = $contrato->numero_contrato . '_' .
                 $validated['tipo_documento'] . '_' .
                 time() . '.' . $extension;
 
-            // Definir ruta en el servidor FTP
             $ruta = 'contratos/' . $contrato->organizacion_id . '/' . $nombreArchivo;
 
-            // Subir archivo al servidor FTP
             $contenido = file_get_contents($archivo->getRealPath());
             Storage::disk('ftp')->put($ruta, $contenido);
 
-            // Guardar registro en la base de datos
-            $contratoArchivo = ContratoArchivo::create([
+            ContratoArchivo::create([
                 'contrato_id' => $contrato->id,
                 'subido_por' => Auth::id(),
                 'nombre_original' => $nombreOriginal,
@@ -376,6 +418,11 @@ class ContratoController extends Controller
             return back()->with('success', 'Archivo subido exitosamente');
 
         } catch (\Exception $e) {
+            Log::error('Error al subir archivo de contrato', [
+                'error' => $e->getMessage(),
+                'contrato_id' => $contrato->id
+            ]);
+
             return back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
         }
     }
@@ -386,19 +433,15 @@ class ContratoController extends Controller
     public function descargarArchivo(ContratoArchivo $archivo)
     {
         try {
-            // Verificar permisos
+            /** @var \App\Models\Usuario $user */
             $user = Auth::user();
             $contrato = $archivo->contrato;
 
-            if (
-                !$user->tienePermiso('ver-todos-contratos', $contrato->organizacion_id) &&
-                $contrato->contratista_id != $user->id &&
-                $contrato->supervisor_id != $user->id
-            ) {
+            // Verificar acceso
+            if (!$contrato->usuarioPuedeVer($user)) {
                 abort(403, 'No tienes permiso para descargar este archivo');
             }
 
-            // Descargar del servidor FTP
             if (!Storage::disk('ftp')->exists($archivo->ruta)) {
                 return back()->with('error', 'El archivo no existe en el servidor');
             }
@@ -410,6 +453,11 @@ class ContratoController extends Controller
                 ->header('Content-Disposition', 'attachment; filename="' . $archivo->nombre_original . '"');
 
         } catch (\Exception $e) {
+            Log::error('Error al descargar archivo', [
+                'error' => $e->getMessage(),
+                'archivo_id' => $archivo->id
+            ]);
+
             return back()->with('error', 'Error al descargar el archivo: ' . $e->getMessage());
         }
     }
@@ -420,7 +468,7 @@ class ContratoController extends Controller
     public function eliminarArchivo(ContratoArchivo $archivo)
     {
         try {
-            // Verificar permisos
+            /** @var \App\Models\Usuario $user */
             $user = Auth::user();
             $contrato = $archivo->contrato;
 
@@ -428,12 +476,16 @@ class ContratoController extends Controller
                 abort(403, 'No tienes permiso para eliminar archivos');
             }
 
-            // Eliminar (el modelo se encarga de eliminar del FTP mediante el evento boot)
             $archivo->delete();
 
             return back()->with('success', 'Archivo eliminado exitosamente');
 
         } catch (\Exception $e) {
+            Log::error('Error al eliminar archivo', [
+                'error' => $e->getMessage(),
+                'archivo_id' => $archivo->id
+            ]);
+
             return back()->with('error', 'Error al eliminar el archivo: ' . $e->getMessage());
         }
     }
