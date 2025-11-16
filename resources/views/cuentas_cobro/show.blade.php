@@ -25,17 +25,25 @@
                                     {{ $cuentaCobro->numero_cuenta_cobro }}
                                 </h1>
                                 <!-- Estado Badge -->
-                                <span class="px-4 py-2 rounded-full text-sm font-semibold
-                                    @if($cuentaCobro->estado == 'borrador') bg-gray-100 text-gray-800
-                                    @elseif($cuentaCobro->estado == 'radicada') bg-blue-100 text-blue-800
-                                    @elseif($cuentaCobro->estado == 'en_revision') bg-yellow-100 text-yellow-800
-                                    @elseif($cuentaCobro->estado == 'aprobada') bg-green-100 text-green-800
-                                    @elseif($cuentaCobro->estado == 'rechazada') bg-red-100 text-red-800
-                                    @elseif($cuentaCobro->estado == 'pagada') bg-purple-100 text-purple-800
-                                    @elseif($cuentaCobro->estado == 'anulada') bg-gray-100 text-gray-600
-                                    @endif">
-                                    <i class="fas fa-circle text-xs mr-1"></i>
-                                    {{ $cuentaCobro->estado_nombre }}
+                                @php
+                                    $estadosBadge = [
+                                        'borrador' => ['bg' => 'bg-gray-100', 'text' => 'text-gray-800', 'icon' => 'fa-file'],
+                                        'radicada' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-800', 'icon' => 'fa-paper-plane'],
+                                        'en_correccion_supervisor' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-800', 'icon' => 'fa-exclamation-triangle'],
+                                        'certificado_supervisor' => ['bg' => 'bg-cyan-100', 'text' => 'text-cyan-800', 'icon' => 'fa-check-circle'],
+                                        'en_correccion_contratacion' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-800', 'icon' => 'fa-exclamation-triangle'],
+                                        'verificado_contratacion' => ['bg' => 'bg-teal-100', 'text' => 'text-teal-800', 'icon' => 'fa-stamp'],
+                                        'verificado_presupuesto' => ['bg' => 'bg-indigo-100', 'text' => 'text-indigo-800', 'icon' => 'fa-wallet'],
+                                        'aprobada_ordenador' => ['bg' => 'bg-green-100', 'text' => 'text-green-800', 'icon' => 'fa-check-double'],
+                                        'en_proceso_pago' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-800', 'icon' => 'fa-money-check-alt'],
+                                        'pagada' => ['bg' => 'bg-green-600', 'text' => 'text-white', 'icon' => 'fa-check-circle'],
+                                        'anulada' => ['bg' => 'bg-red-100', 'text' => 'text-red-800', 'icon' => 'fa-ban'],
+                                    ];
+                                    $badge = $estadosBadge[$cuentaCobro->estado] ?? ['bg' => 'bg-gray-100', 'text' => 'text-gray-800', 'icon' => 'fa-circle'];
+                                @endphp
+                                <span class="px-4 py-2 rounded-full text-sm font-semibold {{ $badge['bg'] }} {{ $badge['text'] }}">
+                                    <i class="fas {{ $badge['icon'] }} text-xs mr-1"></i>
+                                    {{ $cuentaCobro->estadoNombre }}
                                 </span>
                             </div>
                             <p class="text-secondary ml-9">
@@ -43,9 +51,15 @@
                             </p>
                         </div>
                         
-                        <!-- Botones de Acción -->
+                        <!-- Botones de Acción Según Permisos y Estado -->
                         <div class="flex items-center space-x-3">
-                            @if($cuentaCobro->estado == 'borrador')
+                            @php
+                                $user = auth()->user();
+                                $organizacionId = $cuentaCobro->contrato->organizacion_id;
+                            @endphp
+
+                            {{-- EDITAR - Solo en borrador --}}
+                            @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('editar-cuenta-cobro', $organizacionId))
                                 <a href="{{ route('cuentas-cobro.edit', $cuentaCobro->id) }}" 
                                    class="bg-gradient-to-r from-accent to-accent text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
                                     <i class="fas fa-edit mr-2"></i>
@@ -53,12 +67,95 @@
                                 </a>
                             @endif
                             
-                            <button type="button" 
-                                    onclick="document.getElementById('modalCambiarEstado').classList.remove('hidden')"
-                                    class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
-                                <i class="fas fa-exchange-alt mr-2"></i>
-                                Cambiar Estado
-                            </button>
+                            {{-- RADICAR - Borrador → Radicada --}}
+                            @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('radicar-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('radicada', 'Radicar Cuenta de Cobro')"
+                                        class="bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    Radicar
+                                </button>
+                            @endif
+
+                            {{-- CERTIFICAR - Radicada → Certificado Supervisor --}}
+                            @if($cuentaCobro->estado == 'radicada' && $user->tienePermiso('revisar-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('certificado_supervisor', 'Certificar Supervisión')"
+                                        class="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    Certificar
+                                </button>
+                            @endif
+
+                            {{-- DEVOLVER SUPERVISOR - Radicada → En Corrección Supervisor --}}
+                            @if($cuentaCobro->estado == 'radicada' && $user->tienePermiso('rechazar-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="mostrarModalEstado('en_correccion_supervisor', 'Devolver a Contratista', 'orange')"
+                                        class="bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-undo mr-2"></i>
+                                    Devolver
+                                </button>
+                            @endif
+
+                            {{-- VERIFICAR LEGAL - Certificado Supervisor → Verificado Contratación --}}
+                            @if($cuentaCobro->estado == 'certificado_supervisor' && $user->tienePermiso('verificar-legal-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('verificado_contratacion', 'Verificar Documentación Legal')"
+                                        class="bg-gradient-to-r from-teal-600 to-teal-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-stamp mr-2"></i>
+                                    Verificar Legal
+                                </button>
+                            @endif
+
+                            {{-- DEVOLVER CONTRATACIÓN --}}
+                            @if($cuentaCobro->estado == 'certificado_supervisor' && $user->tienePermiso('rechazar-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="mostrarModalEstado('en_correccion_contratacion', 'Devolver por Ajustes Legales', 'yellow')"
+                                        class="bg-gradient-to-r from-yellow-600 to-yellow-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-undo mr-2"></i>
+                                    Devolver
+                                </button>
+                            @endif
+
+                            {{-- VERIFICAR PRESUPUESTO - Verificado Contratación → Verificado Presupuesto --}}
+                            @if($cuentaCobro->estado == 'verificado_contratacion' && $user->tienePermiso('verificar-presupuesto-cuenta-cobro', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('verificado_presupuesto', 'Verificar CDP/RP')"
+                                        class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-wallet mr-2"></i>
+                                    Verificar Presupuesto
+                                </button>
+                            @endif
+
+                            {{-- APROBAR FINALMENTE - Verificado Presupuesto → Aprobada Ordenador --}}
+                            @if($cuentaCobro->estado == 'verificado_presupuesto' && $user->tienePermiso('aprobar-finalmente', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('aprobada_ordenador', 'Aprobación Final')"
+                                        class="bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-check-double mr-2"></i>
+                                    Aprobar
+                                </button>
+                            @endif
+
+                            {{-- GENERAR ORDEN DE PAGO - Aprobada Ordenador → En Proceso Pago --}}
+                            @if($cuentaCobro->estado == 'aprobada_ordenador' && $user->tienePermiso('generar-ordenes-pago', $organizacionId))
+                                <button type="button" 
+                                        onclick="cambiarEstadoRapido('en_proceso_pago', 'Generar Orden de Pago')"
+                                        class="bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-file-invoice-dollar mr-2"></i>
+                                    Generar O.P.
+                                </button>
+                            @endif
+
+                            {{-- PROCESAR PAGO - En Proceso Pago → Pagada --}}
+                            @if($cuentaCobro->estado == 'en_proceso_pago' && $user->tienePermiso('procesar-pago', $organizacionId))
+                                <button type="button" 
+                                        onclick="mostrarModalEstado('pagada', 'Confirmar Pago Ejecutado', 'green')"
+                                        class="bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                    <i class="fas fa-money-check-alt mr-2"></i>
+                                    Confirmar Pago
+                                </button>
+                            @endif
                             
                             <button type="button" 
                                     onclick="window.print()"
@@ -72,7 +169,7 @@
 
                 <!-- Mensajes de Éxito/Error -->
                 @if(session('success'))
-                    <div class="mb-6 bg-green-50 border-l-4 border-green-500 rounded-lg p-4">
+                    <div class="mb-6 bg-green-50 border-l-4 border-green-500 rounded-lg p-4 animate-slideIn">
                         <div class="flex items-center">
                             <i class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
                             <p class="text-green-800 font-medium">{{ session('success') }}</p>
@@ -81,10 +178,25 @@
                 @endif
 
                 @if(session('error'))
-                    <div class="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4">
+                    <div class="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4 animate-slideIn">
                         <div class="flex items-center">
                             <i class="fas fa-exclamation-circle text-red-500 text-xl mr-3"></i>
                             <p class="text-red-800 font-medium">{{ session('error') }}</p>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Alerta para estados de corrección -->
+                @if(in_array($cuentaCobro->estado, ['en_correccion_supervisor', 'en_correccion_contratacion']))
+                    <div class="mb-6 bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-orange-500 text-xl mr-3 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-orange-800 mb-1">Cuenta Devuelta para Correcciones</h3>
+                                <p class="text-sm text-orange-700">
+                                    Esta cuenta ha sido devuelta. Revise el historial de cambios para ver los comentarios y realizar las correcciones necesarias.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 @endif
@@ -116,8 +228,18 @@
                                 </div>
                                 
                                 <div>
+                                    <p class="text-sm text-gray-500 mb-1">Supervisor</p>
+                                    <p class="font-semibold text-gray-800">{{ $cuentaCobro->contrato->supervisor->nombre ?? 'No asignado' }}</p>
+                                </div>
+
+                                <div>
                                     <p class="text-sm text-gray-500 mb-1">Valor Total Contrato</p>
                                     <p class="font-semibold text-green-600">${{ number_format($cuentaCobro->contrato->valor_total, 0, ',', '.') }}</p>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Saldo Disponible</p>
+                                    <p class="font-semibold text-blue-600">${{ number_format($cuentaCobro->contrato->valor_total - $cuentaCobro->contrato->valor_pagado, 0, ',', '.') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -132,13 +254,23 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <p class="text-sm text-gray-500 mb-1">Fecha de Radicación</p>
-                                    <p class="font-semibold text-gray-800">{{ $cuentaCobro->fecha_radicacion->format('d/m/Y') }}</p>
+                                    <p class="font-semibold text-gray-800">{{ $cuentaCobro->fecha_radicacion ? $cuentaCobro->fecha_radicacion->format('d/m/Y') : 'No radicada' }}</p>
                                 </div>
                                 
-                                @if($cuentaCobro->periodo_cobrado)
                                 <div>
-                                    <p class="text-sm text-gray-500 mb-1">Período Cobrado</p>
-                                    <p class="font-semibold text-gray-800">{{ $cuentaCobro->periodo_cobrado }}</p>
+                                    <p class="text-sm text-gray-500 mb-1">Período</p>
+                                    <p class="font-semibold text-gray-800">
+                                        {{ $cuentaCobro->periodo_inicio->format('d/m/Y') }} - {{ $cuentaCobro->periodo_fin->format('d/m/Y') }}
+                                    </p>
+                                </div>
+
+                                @if($cuentaCobro->pila_verificada)
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">PILA Verificada</p>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Verificada
+                                    </span>
                                 </div>
                                 @endif
                                 
@@ -203,7 +335,7 @@
                                     <i class="fas fa-paperclip text-primary mr-2"></i>
                                     Documentos Soporte
                                 </h2>
-                                @if($cuentaCobro->estado != 'anulada' && $cuentaCobro->estado != 'pagada')
+                                @if($cuentaCobro->estado != 'anulada' && $cuentaCobro->estado != 'pagada' && $user->tienePermiso('cargar-documentos', $organizacionId))
                                 <button type="button" 
                                         onclick="document.getElementById('modalSubirDocumento').classList.remove('hidden')"
                                         class="bg-gradient-to-r from-accent to-accent text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center text-sm">
@@ -219,32 +351,33 @@
                                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                         <div class="flex items-center space-x-3 flex-1">
                                             <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                                <i class="fas fa-{{ $documento->icono }} text-primary text-lg"></i>
+                                                <i class="fas fa-file-pdf text-primary text-lg"></i>
                                             </div>
                                             <div class="flex-1">
                                                 <p class="font-semibold text-gray-800">{{ $documento->nombre_archivo }}</p>
                                                 <div class="flex items-center space-x-3 text-xs text-gray-500 mt-1">
-                                                    <span>{{ $documento->getTipoDocumentoNombre() }}</span>
+                                                    <span>{{ ucfirst(str_replace('_', ' ', $documento->tipo_documento)) }}</span>
                                                     <span>•</span>
-                                                    <span>{{ $documento->getTamanoFormateado() }}</span>
+                                                    <span>{{ round($documento->tamano_kb / 1024, 2) }} MB</span>
                                                     <span>•</span>
-                                                    <span>{{ $documento->uploaded_at->format('d/m/Y H:i') }}</span>
+                                                    <span>{{ $documento->created_at->format('d/m/Y H:i') }}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="flex items-center space-x-2">
-                                            <a href="{{ $documento->getUrlDescarga() }}" 
+                                            <a href="{{ Storage::url($documento->ruta_archivo) }}" 
                                                target="_blank"
-                                               class="text-primary hover:text-primary-dark transition-colors">
+                                               download
+                                               class="text-primary hover:text-primary-dark transition-colors p-2">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            @if($cuentaCobro->estado == 'borrador')
+                                            @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('cargar-documentos', $organizacionId))
                                             <form action="{{ route('cuentas-cobro.eliminar-documento', [$cuentaCobro->id, $documento->id]) }}" 
                                                   method="POST" 
                                                   onsubmit="return confirm('¿Está seguro de eliminar este documento?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-800 transition-colors">
+                                                <button type="submit" class="text-red-600 hover:text-red-800 transition-colors p-2">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
@@ -272,43 +405,30 @@
                             </h2>
 
                             <div class="space-y-4">
-                                <!-- Valor Bruto -->
-                                <div class="bg-white/10 rounded-lg p-4">
-                                    <p class="text-white/80 text-sm mb-1">Valor Bruto</p>
-                                    <p class="text-2xl font-bold">${{ number_format($cuentaCobro->valor_bruto, 0, ',', '.') }}</p>
-                                </div>
-
-                                <!-- Retenciones -->
-                                <div class="bg-white/10 rounded-lg p-4">
-                                    <p class="text-white/80 text-sm mb-2">Retenciones</p>
-                                    
-                                    @if($cuentaCobro->retenciones_calculadas)
-                                        <div class="space-y-2 text-sm">
-                                            <div class="flex justify-between">
-                                                <span>Retención Fuente ({{ $cuentaCobro->contrato->porcentaje_retencion_fuente }}%)</span>
-                                                <span class="font-semibold">
-                                                    ${{ number_format($cuentaCobro->retenciones_calculadas['retencion_fuente'] ?? 0, 0, ',', '.') }}
-                                                </span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span>Estampilla ({{ $cuentaCobro->contrato->porcentaje_estampilla }}%)</span>
-                                                <span class="font-semibold">
-                                                    ${{ number_format($cuentaCobro->retenciones_calculadas['estampilla'] ?? 0, 0, ',', '.') }}
-                                                </span>
-                                            </div>
-                                            <div class="border-t border-white/20 pt-2 mt-2 flex justify-between font-bold">
-                                                <span>Total Retenciones</span>
-                                                <span>${{ number_format($cuentaCobro->retenciones_calculadas['total'] ?? 0, 0, ',', '.') }}</span>
-                                            </div>
-                                        </div>
-                                    @endif
-                                </div>
-
                                 <!-- Valor Neto -->
                                 <div class="bg-white/10 rounded-lg p-4">
                                     <p class="text-white/80 text-sm mb-1">Valor Neto a Pagar</p>
                                     <p class="text-3xl font-bold">${{ number_format($cuentaCobro->valor_neto, 0, ',', '.') }}</p>
                                 </div>
+
+                                @if($cuentaCobro->estado == 'pagada' && $cuentaCobro->fecha_pago_real)
+                                <!-- Información de Pago -->
+                                <div class="bg-white/10 rounded-lg p-4">
+                                    <p class="text-white/80 text-sm mb-2">Información de Pago</p>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex justify-between">
+                                            <span>Fecha de Pago:</span>
+                                            <span class="font-semibold">{{ $cuentaCobro->fecha_pago_real->format('d/m/Y') }}</span>
+                                        </div>
+                                        @if($cuentaCobro->numero_comprobante_pago)
+                                        <div class="flex justify-between">
+                                            <span>Comprobante:</span>
+                                            <span class="font-semibold">{{ $cuentaCobro->numero_comprobante_pago }}</span>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                         </div>
 
@@ -321,15 +441,16 @@
                             
                             @if($cuentaCobro->historial->count() > 0)
                                 <div class="space-y-4">
-                                    @foreach($cuentaCobro->historial as $cambio)
+                                    @foreach($cuentaCobro->historial->sortByDesc('created_at') as $cambio)
                                     <div class="relative pl-6 pb-4 border-l-2 border-gray-200 last:border-0 last:pb-0">
                                         <div class="absolute -left-2 top-0 w-4 h-4 bg-primary rounded-full border-2 border-white"></div>
                                         <div>
                                             <p class="font-semibold text-gray-800 text-sm">
-                                                {{ $cambio->estado_anterior_nombre }} → {{ $cambio->estado_nuevo_nombre }}
+                                                {{ ucfirst(str_replace('_', ' ', $cambio->estado_anterior ?? 'Inicio')) }} → 
+                                                {{ ucfirst(str_replace('_', ' ', $cambio->estado_nuevo)) }}
                                             </p>
                                             <p class="text-xs text-gray-500 mt-1">
-                                                Por {{ $cambio->usuario->nombre }} • {{ $cambio->tiempo_cambio }}
+                                                Por {{ $cambio->usuario->nombre }} • {{ $cambio->created_at->diffForHumans() }}
                                             </p>
                                             @if($cambio->comentario)
                                             <p class="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
@@ -346,7 +467,7 @@
                         </div>
 
                         <!-- Acciones Rápidas -->
-                        @if($cuentaCobro->estado == 'borrador')
+                        @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('editar-cuenta-cobro', $organizacionId))
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                                 <i class="fas fa-bolt text-primary mr-2"></i>
@@ -380,7 +501,7 @@
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Cambiar Estado</h3>
+                <h3 class="text-xl font-bold text-gray-800" id="modalTitulo">Cambiar Estado</h3>
                 <button type="button" 
                         onclick="document.getElementById('modalCambiarEstado').classList.add('hidden')"
                         class="text-gray-400 hover:text-gray-600">
@@ -388,34 +509,19 @@
                 </button>
             </div>
             
-            <form action="{{ route('cuentas-cobro.cambiar-estado', $cuentaCobro->id) }}" method="POST">
+            <form action="{{ route('cuentas-cobro.cambiar-estado', $cuentaCobro->id) }}" method="POST" id="formCambiarEstado">
                 @csrf
                 
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Nuevo Estado <span class="text-red-500">*</span>
-                    </label>
-                    <select name="nuevo_estado" 
-                            required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">Seleccione un estado</option>
-                        <option value="borrador">Borrador</option>
-                        <option value="radicada">Radicada</option>
-                        <option value="en_revision">En Revisión</option>
-                        <option value="aprobada">Aprobada</option>
-                        <option value="rechazada">Rechazada</option>
-                        <option value="pagada">Pagada</option>
-                        <option value="anulada">Anulada</option>
-                    </select>
-                </div>
+                <input type="hidden" name="nuevo_estado" id="nuevoEstadoInput">
                 
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Comentario
+                        Comentario <span class="text-red-500" id="comentarioRequerido">*</span>
                     </label>
                     <textarea name="comentario" 
-                              rows="3"
-                              placeholder="Motivo del cambio de estado (opcional)"
+                              id="comentarioTextarea"
+                              rows="4"
+                              placeholder="Describa el motivo o agregue observaciones..."
                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
                 </div>
                 
@@ -426,8 +532,9 @@
                         Cancelar
                     </button>
                     <button type="submit" 
+                            id="btnConfirmarEstado"
                             class="flex-1 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all">
-                        Cambiar Estado
+                        Confirmar
                     </button>
                 </div>
             </form>
@@ -460,9 +567,10 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                         <option value="">Seleccione un tipo</option>
                         <option value="acta_recibido">Acta de Recibido</option>
-                        <option value="informe">Informe</option>
+                        <option value="informe">Informe de Actividades</option>
+                        <option value="pila">Planilla PILA</option>
+                        <option value="formato_institucional">Formato Institucional</option>
                         <option value="foto_evidencia">Foto de Evidencia</option>
-                        <option value="planilla">Planilla</option>
                         <option value="otro">Otro</option>
                     </select>
                 </div>
@@ -495,6 +603,63 @@
     </div>
 </div>
 
+@push('scripts')
+<script>
+    // Función para cambio rápido de estado (sin comentario obligatorio)
+    function cambiarEstadoRapido(nuevoEstado, titulo) {
+        document.getElementById('nuevoEstadoInput').value = nuevoEstado;
+        document.getElementById('modalTitulo').textContent = titulo;
+        document.getElementById('comentarioTextarea').required = false;
+        document.getElementById('comentarioRequerido').style.display = 'none';
+        
+        // Cambiar color del botón según el estado
+        const btnConfirmar = document.getElementById('btnConfirmarEstado');
+        const colores = {
+            'radicada': 'from-blue-600 to-blue-700',
+            'certificado_supervisor': 'from-cyan-600 to-cyan-700',
+            'verificado_contratacion': 'from-teal-600 to-teal-700',
+            'verificado_presupuesto': 'from-indigo-600 to-indigo-700',
+            'aprobada_ordenador': 'from-green-600 to-green-700',
+            'en_proceso_pago': 'from-purple-600 to-purple-700',
+            'pagada': 'from-green-600 to-green-700',
+        };
+        
+        btnConfirmar.className = 'flex-1 bg-gradient-to-r ' + (colores[nuevoEstado] || 'from-primary to-primary-dark') + ' text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all';
+        
+        document.getElementById('modalCambiarEstado').classList.remove('hidden');
+    }
+
+    // Función para mostrar modal con comentario obligatorio
+    function mostrarModalEstado(nuevoEstado, titulo, color) {
+        document.getElementById('nuevoEstadoInput').value = nuevoEstado;
+        document.getElementById('modalTitulo').textContent = titulo;
+        document.getElementById('comentarioTextarea').required = true;
+        document.getElementById('comentarioRequerido').style.display = 'inline';
+        
+        // Cambiar color del botón
+        const btnConfirmar = document.getElementById('btnConfirmarEstado');
+        const colores = {
+            'orange': 'from-orange-600 to-orange-700',
+            'yellow': 'from-yellow-600 to-yellow-700',
+            'green': 'from-green-600 to-green-700',
+            'red': 'from-red-600 to-red-700',
+        };
+        
+        btnConfirmar.className = 'flex-1 bg-gradient-to-r ' + (colores[color] || 'from-primary to-primary-dark') + ' text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all';
+        
+        document.getElementById('modalCambiarEstado').classList.remove('hidden');
+    }
+
+    // Cerrar modales con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.getElementById('modalCambiarEstado').classList.add('hidden');
+            document.getElementById('modalSubirDocumento').classList.add('hidden');
+        }
+    });
+</script>
+@endpush
+
 @push('styles')
 <style>
     @media print {
@@ -511,6 +676,21 @@
             background: #1e40af !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+        }
+    }
+
+    .animate-slideIn {
+        animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
     }
 </style>

@@ -33,7 +33,7 @@
                             @endif
                         </div>
                         <h6 class="text-sm text-gray-500 mb-2">Usuarios Activos</h6>
-                        <h3 class="text-3xl font-bold text-primary">{{ $estadisticas['usuarios_activos'] }}</h3>
+                        <h3 class="text-3xl font-bold text-primary">{{ $estadisticas['usuarios_activos'] ?? 0 }}</h3>
                     </div>
                 </div>
 
@@ -51,51 +51,193 @@
                             @endif
                         </div>
                         <h6 class="text-sm text-gray-500 mb-2">Contratos Activos</h6>
-                        <h3 class="text-3xl font-bold text-primary">{{ $estadisticas['contratos_activos'] }}</h3>
+                        <h3 class="text-3xl font-bold text-primary">{{ $estadisticas['contratos_activos'] ?? 0 }}</h3>
                     </div>
                 </div>
 
-                <!-- Valor Contratos -->
-                <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-green-500">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
-                                <i class="bi bi-currency-dollar text-2xl text-green-500"></i>
+                <!-- KPI Específico por Rol -->
+                @if(isset($estadisticas['cuentas_pendientes_certificacion']))
+                    <!-- SUPERVISOR: Cuentas Pendientes de Certificación -->
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-clipboard-check text-2xl text-warning"></i>
+                                </div>
                             </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Pendientes Certificar</h6>
+                            <h3 class="text-3xl font-bold text-warning">{{ $estadisticas['cuentas_pendientes_certificacion'] }}</h3>
                         </div>
-                        <h6 class="text-sm text-gray-500 mb-2">Valor Contratos</h6>
-                        <h3 class="text-3xl font-bold text-green-500">
-                            ${{ number_format($estadisticas['valor_contratos'], 0, ',', '.') }}
-                        </h3>
                     </div>
-                </div>
 
-                <!-- Cuentas Pendientes -->
-                <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
-                                <i class="bi bi-clock-history text-2xl text-warning"></i>
+@elseif(isset($estadisticas['cuentas_pendientes_aprobacion']))
+                    <!-- ORDENADOR GASTO: Cuentas Pendientes de Aprobación -->
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-check-circle text-2xl text-warning"></i>
+                                </div>
                             </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Pendientes Aprobar</h6>
+                            <h3 class="text-3xl font-bold text-warning">{{ $estadisticas['cuentas_pendientes_aprobacion'] }}</h3>
                         </div>
-                        <h6 class="text-sm text-gray-500 mb-2">Cuentas Pendientes</h6>
-                        <h3 class="text-3xl font-bold text-warning">
-                            {{ $estadisticas['cuentas_pendientes'] ?? 0 }}
-                        </h3>
-                        <small class="text-gray-500">Próximamente</small>
                     </div>
-                </div>
+
+@elseif(isset($estadisticas['ordenes_pago_pendientes']))
+                    <!-- TESORERO: Órdenes de Pago Pendientes -->
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-cash-coin text-2xl text-warning"></i>
+                                </div>
+                            </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Órdenes de Pago</h6>
+                            <h3 class="text-3xl font-bold text-warning">{{ $estadisticas['ordenes_pago_pendientes'] }}</h3>
+                        </div>
+                    </div>
+
+@elseif(isset($estadisticas['cuentas_pendientes_verificacion']))
+                    <!-- REVISOR CONTRATACIÓN: Cuentas Pendientes de Verificación -->
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-shield-check text-2xl text-warning"></i>
+                                </div>
+                            </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Pendientes Verificar</h6>
+                            <h3 class="text-3xl font-bold text-warning">{{ $estadisticas['cuentas_pendientes_verificacion'] }}</h3>
+                        </div>
+                    </div>
+
+@else
+                    <!-- ADMIN ORGANIZACIÓN: Cuentas Pendientes Generales -->
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-warning">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-clock-history text-2xl text-warning"></i>
+                                </div>
+                            </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Cuentas Pendientes</h6>
+                            <h3 class="text-3xl font-bold text-warning">
+                                {{ $estadisticas['cuentas_pendientes'] ?? 0 }}
+                            </h3>
+                        </div>
+                    </div>
+@endif
+
+                <!-- Valor Contratos / Monto Pagado -->
+                @if(isset($estadisticas['monto_pagado_mes']))
+                    <div class="bg-gradient-to-br from-primary to-primary-dark rounded-xl shadow-md hover-lift text-white">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-currency-dollar text-2xl text-white"></i>
+                                </div>
+                            </div>
+                            <h6 class="text-white/80 text-sm mb-2">Pagado Este Mes</h6>
+                            <h3 class="text-3xl font-bold">
+                                ${{ number_format($estadisticas['monto_pagado_mes'], 0, ',', '.') }}
+                            </h3>
+                        </div>
+                    </div>
+                @else
+                    <div class="bg-white rounded-xl shadow-md hover-lift border-l-4 border-green-500">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
+                                    <i class="bi bi-currency-dollar text-2xl text-green-500"></i>
+                                </div>
+                            </div>
+                            <h6 class="text-sm text-gray-500 mb-2">Valor Contratos</h6>
+                            <h3 class="text-3xl font-bold text-green-500">
+                                ${{ number_format($estadisticas['valor_contratos'] ?? 0, 0, ',', '.') }}
+                            </h3>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 <!-- Columna Izquierda (60%) -->
                 <div class="lg:col-span-3 space-y-6">
+                    
+                    <!-- Cuentas Pendientes por Rol -->
+                    @if(isset($cuentasPendientes) && $cuentasPendientes->count() > 0)
+                    <div class="bg-white rounded-xl shadow-md">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                            <h5 class="text-xl font-semibold text-warning flex items-center">
+                                <i class="bi bi-exclamation-triangle mr-2"></i>
+                                @if(isset($estadisticas['cuentas_pendientes_certificacion']))
+                                    Cuentas Pendientes de Certificar
+                                @elseif(isset($estadisticas['cuentas_pendientes_aprobacion']))
+                                    Cuentas Pendientes de Aprobar
+                                @elseif(isset($estadisticas['ordenes_pago_pendientes']))
+                                    Cuentas para Gestión de Tesorería
+                                @elseif(isset($estadisticas['cuentas_pendientes_verificacion']))
+                                    Cuentas Pendientes de Verificar
+                                @else
+                                    Cuentas de Cobro Pendientes
+                                @endif
+                            </h5>
+                            <span class="bg-warning text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                {{ $cuentasPendientes->count() }}
+                            </span>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            @foreach($cuentasPendientes->take(5) as $cuenta)
+                            <div class="p-4 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center flex-1">
+                                        <div class="w-10 h-10 bg-warning/10 rounded-full flex items-center justify-center text-warning mr-4">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <h6 class="font-semibold text-gray-800 mb-1">
+                                                {{ $cuenta->numero_cuenta_cobro }}
+                                            </h6>
+                                            <small class="text-gray-500">
+                                                {{ $cuenta->contrato->numero_contrato }} - 
+                                                {{ $cuenta->contrato->contratista->nombre }}
+                                            </small>
+                                            <div class="mt-1">
+                                                <span class="text-xs font-semibold text-green-600">
+                                                    ${{ number_format($cuenta->valor_neto, 0, ',', '.') }}
+                                                </span>
+                                                <span class="text-xs text-gray-400 mx-2">•</span>
+                                                <span class="text-xs text-gray-500">
+                                                    {{ $cuenta->created_at->diffForHumans() }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a href="{{ route('cuentas-cobro.show', $cuenta->id) }}" 
+                                       class="ml-4 px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary-dark transition">
+                                        Ver Detalle
+                                    </a>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @if($cuentasPendientes->count() > 5)
+                        <div class="px-6 py-4 border-t border-gray-100 text-center">
+                            <a href="{{ route('cuentas-cobro.index') }}" class="text-primary hover:text-primary-dark font-semibold">
+                                Ver todas ({{ $cuentasPendientes->count() }})
+                            </a>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
                     <!-- Tareas Pendientes (Solo Admin Organización) -->
                     @if(isset($usuariosPendientes) && $usuariosPendientes->count() > 0)
                     <div class="bg-white rounded-xl shadow-md">
                         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h5 class="text-xl font-semibold text-warning flex items-center">
-                                <i class="bi bi-exclamation-triangle mr-2"></i>Tareas Pendientes
+                                <i class="bi bi-exclamation-triangle mr-2"></i>Usuarios Pendientes
                             </h5>
                             <span class="bg-warning text-white px-3 py-1 rounded-full text-sm font-semibold">
                                 {{ $usuariosPendientes->count() }}
@@ -124,31 +266,36 @@
                     </div>
                     @endif
 
-                    <!-- Contratos Recientes -->
+                    <!-- Contratos Recientes / Mis Contratos -->
+                    @if(isset($contratosRecientes))
                     <div class="bg-white rounded-xl shadow-md">
                         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h5 class="text-xl font-semibold text-primary flex items-center">
-                                <i class="bi bi-file-earmark-text mr-2"></i>Contratos Recientes
+                                <i class="bi bi-file-earmark-text mr-2"></i>
+                                @if(isset($misContratos))
+                                    Mis Contratos
+                                @else
+                                    Contratos Recientes
+                                @endif
                             </h5>
                             <a href="{{ route('contratos.index') }}" class="px-4 py-2 border border-primary text-primary text-sm rounded-lg hover:bg-primary hover:text-white transition">
                                 Ver Todos
                             </a>
                         </div>
                         <div class="overflow-hidden">
-                            @if(isset($contratosRecientes) && $contratosRecientes->count() > 0)
+                            @if($contratosRecientes->count() > 0)
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contratista</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
                                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
                                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($contratosRecientes as $contrato)
+                                        @foreach($contratosRecientes->take(5) as $contrato)
                                         <tr class="hover:bg-gray-50 transition">
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <a href="{{ route('contratos.show', $contrato) }}" class="text-primary font-semibold hover:text-primary-dark">
@@ -156,7 +303,6 @@
                                                 </a>
                                             </td>
                                             <td class="px-6 py-4">{{ $contrato->contratista->nombre ?? 'Sin asignar' }}</td>
-                                            <td class="px-6 py-4">{{ $contrato->supervisor->nombre ?? 'Sin asignar' }}</td>
                                             <td class="px-6 py-4 text-right font-semibold">${{ number_format($contrato->valor_total, 0, ',', '.') }}</td>
                                             <td class="px-6 py-4 text-center">
                                                 @php
@@ -184,6 +330,7 @@
                             @endif
                         </div>
                     </div>
+                    @endif
 
                     <!-- Contratos por Vencer -->
                     @if(isset($contratosPorVencer) && $contratosPorVencer->count() > 0)
@@ -231,19 +378,30 @@
                             </h5>
                         </div>
                         <div class="p-6 space-y-3">
-                            @if(auth()->user()->tienePermiso('crear-contrato', $organizacion->id))
+                            @php
+                                $user = auth()->user();
+                                $orgId = $organizacion->id;
+                            @endphp
+
+                            @if($user->tienePermiso('crear-cuenta-cobro', $orgId))
+                            <a href="{{ route('cuentas-cobro.create') }}" class="block w-full bg-gradient-to-r from-accent to-accent text-white text-center px-4 py-3 rounded-lg hover:shadow-lg transition font-semibold">
+                                <i class="bi bi-file-earmark-plus mr-2"></i>Nueva Cuenta de Cobro
+                            </a>
+                            @endif
+
+                            @if($user->tienePermiso('crear-contrato', $orgId))
                             <a href="{{ route('contratos.create') }}" class="block w-full bg-primary text-white text-center px-4 py-3 rounded-lg hover:bg-primary-dark transition font-semibold">
                                 <i class="bi bi-plus-circle mr-2"></i>Nuevo Contrato
                             </a>
                             @endif
 
-                            @if(auth()->user()->tienePermiso('ver-usuarios', $organizacion->id))
+                            @if($user->tienePermiso('ver-usuarios', $orgId))
                             <a href="{{ route('usuarios.index') }}" class="block w-full border border-primary text-primary text-center px-4 py-3 rounded-lg hover:bg-primary hover:text-white transition font-semibold">
                                 <i class="bi bi-people mr-2"></i>Gestionar Usuarios
                             </a>
                             @endif
 
-                            @if(auth()->user()->tienePermiso('asignar-rol', $organizacion->id))
+                            @if($user->tienePermiso('asignar-rol-usuario', $orgId))
                             <a href="{{ route('usuarios.pendientes') }}" class="block w-full border border-warning text-warning text-center px-4 py-3 rounded-lg hover:bg-warning hover:text-white transition font-semibold relative">
                                 <i class="bi bi-clock-history mr-2"></i>Usuarios Pendientes
                                 @if(isset($estadisticas['usuarios_pendientes']) && $estadisticas['usuarios_pendientes'] > 0)
@@ -253,6 +411,10 @@
                                 @endif
                             </a>
                             @endif
+
+                            <a href="{{ route('cuentas-cobro.index') }}" class="block w-full border border-gray-300 text-gray-700 text-center px-4 py-3 rounded-lg hover:bg-gray-50 transition font-semibold">
+                                <i class="bi bi-list-ul mr-2"></i>Ver Cuentas de Cobro
+                            </a>
 
                             <a href="{{ route('contratos.index') }}" class="block w-full border border-gray-300 text-gray-700 text-center px-4 py-3 rounded-lg hover:bg-gray-50 transition font-semibold">
                                 <i class="bi bi-list-ul mr-2"></i>Ver Contratos
@@ -288,4 +450,15 @@
         </div>
     </div>
 </div>
+
+<style>
+    .hover-lift {
+        transition: all 0.3s ease;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+</style>
 @endsection

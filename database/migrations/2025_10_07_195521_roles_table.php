@@ -37,14 +37,23 @@ return new class extends Migration
 
         Schema::create('permisos', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
-            $table->string('slug')->unique();
+            $table->string('nombre', 100);
+            $table->string('slug', 100)->unique();
             $table->foreignId('modulo_id')->constrained('modulos')->onDelete('cascade');
             $table->text('descripcion')->nullable();
+            $table->enum('tipo', ['lectura', 'escritura', 'eliminacion', 'accion'])
+                  ->default('lectura')
+                  ->comment('Tipo de permiso: lectura, escritura, eliminacion, accion');
+            $table->boolean('es_organizacion')
+                  ->nullable()
+                  ->default(null)
+                  ->comment('true = permiso de organización (nivel 2), false/null = permiso de sistema (nivel 1)');
             $table->timestamps();
-            
+            // Índices
             $table->index('slug');
             $table->index('modulo_id');
+            $table->index('tipo');
+            $table->index('es_organizacion');
         });
 
         Schema::create('rol_permisos', function (Blueprint $table) {

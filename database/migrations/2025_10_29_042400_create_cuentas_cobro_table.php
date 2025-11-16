@@ -10,29 +10,47 @@ return new class extends Migration
     {
         Schema::create('cuentas_cobro', function (Blueprint $table) {
             $table->id();
+            
             $table->foreignId('contrato_id')->constrained('contratos')->onDelete('cascade');
             $table->string('numero_cuenta_cobro')->unique();
-            $table->date('fecha_radicacion');
-            $table->string('periodo_cobrado')->nullable();
-            $table->decimal('valor_bruto', 15, 2);
+            
+            $table->date('fecha_radicacion')->nullable();
+            $table->date('periodo_inicio');
+            $table->date('periodo_fin');
+            
+            $table->decimal('valor_bruto', 18, 2)->default(0);
             $table->json('retenciones_calculadas')->nullable();
-            $table->decimal('valor_neto', 15, 2);
+            $table->decimal('valor_neto', 18, 2)->default(0);
+            
+            $table->boolean('pila_verificada')->default(false);
+            
+            // FLUJO COMPLETO DE ESTADOS (Real para Alcaldías)
             $table->enum('estado', [
                 'borrador',
                 'radicada',
-                'en_revision',
-                'aprobada',
-                'rechazada',
+                'en_correccion_supervisor',
+                'certificado_supervisor',
+                'en_correccion_contratacion',
+                'verificado_contratacion',
+                'verificado_presupuesto',
+                'aprobada_ordenador',
+                'en_proceso_pago',
                 'pagada',
                 'anulada'
             ])->default('borrador');
+            
             $table->text('observaciones')->nullable();
-            $table->foreignId('created_by')->constrained('usuarios')->onDelete('cascade');
+            $table->foreignId('created_by')->constrained('usuarios');
+            
+            // Campos de pago final
+            $table->date('fecha_pago_real')->nullable();
+            $table->string('numero_comprobante_pago')->nullable();
+            
             $table->timestamps();
             
-            $table->index('numero_cuenta_cobro');
             $table->index(['contrato_id', 'estado']);
             $table->index('fecha_radicacion');
+            $table->index('created_by');
         });
     }
 

@@ -134,17 +134,32 @@
                                 @enderror
                             </div>
 
-                            <!-- Período Cobrado -->
+                            <!-- Período Inicio -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Período Cobrado
+                                    Período Inicio <span class="text-red-500">*</span>
                                 </label>
-                                <input type="text"
-                                       name="periodo_cobrado"
-                                       value="{{ old('periodo_cobrado', $cuentaCobro->periodo_cobrado) }}"
-                                       placeholder="Ej: Enero 2025, Semana 1-4, etc."
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_cobrado') border-red-500 @enderror">
-                                @error('periodo_cobrado')
+                                <input type="date"
+                                       name="periodo_inicio"
+                                       value="{{ old('periodo_inicio', $cuentaCobro->periodo_inicio) }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_inicio') border-red-500 @enderror">
+                                @error('periodo_inicio')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Período Fin -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Período Fin <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date"
+                                       name="periodo_fin"
+                                       value="{{ old('periodo_fin', $cuentaCobro->periodo_fin) }}"
+                                       required
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent @error('periodo_fin') border-red-500 @enderror">
+                                @error('periodo_fin')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -276,22 +291,13 @@
         }
 
         // Listener para cambio de contrato
-        const contratoSelect = document.getElementById('contrato_id');
-        contratoSelect.addEventListener('change', function() {
+        document.getElementById('contrato_id').addEventListener('change', function() {
             const option = this.options[this.selectedIndex];
             porcentajeRetencion = parseFloat(option.dataset.retencion) || 0;
             porcentajeEstampilla = parseFloat(option.dataset.estampilla) || 0;
             calcularTotales();
             guardarBorrador();
         });
-
-        // Cargar porcentajes del contrato seleccionado
-        const selectedOption = contratoSelect.options[contratoSelect.selectedIndex];
-        porcentajeRetencion = parseFloat(selectedOption.dataset.retencion) || 0;
-        porcentajeEstampilla = parseFloat(selectedOption.dataset.estampilla) || 0;
-
-        // Calcular totales iniciales
-        calcularTotales();
 
         // Guardar automáticamente cuando se modifican campos
         configurarAutoguardado();
@@ -302,7 +308,8 @@
         const datos = {
             contrato_id: document.querySelector('[name="contrato_id"]').value,
             fecha_radicacion: document.querySelector('[name="fecha_radicacion"]').value,
-            periodo_cobrado: document.querySelector('[name="periodo_cobrado"]').value,
+            periodo_inicio: document.querySelector('[name="periodo_inicio"]').value,
+            periodo_fin: document.querySelector('[name="periodo_fin"]').value,
             observaciones: document.querySelector('[name="observaciones"]').value,
             items: [],
             itemCounter: itemCounter,
@@ -314,10 +321,8 @@
         // Guardar items
         document.querySelectorAll('.item-row').forEach((itemRow, index) => {
             const itemId = itemRow.getAttribute('data-item');
-            const hiddenId = itemRow.querySelector('[name*="[id]"]');
             datos.items.push({
                 itemId: itemId,
-                id: hiddenId ? hiddenId.value : null,
                 descripcion: itemRow.querySelector('.item-descripcion').value,
                 cantidad: itemRow.querySelector('.item-cantidad').value,
                 valor_unitario: itemRow.querySelector('.item-valor-unitario').value,
@@ -358,8 +363,12 @@
                 document.querySelector('[name="fecha_radicacion"]').value = datos.fecha_radicacion;
             }
 
-            if (datos.periodo_cobrado) {
-                document.querySelector('[name="periodo_cobrado"]').value = datos.periodo_cobrado;
+            if (datos.periodo_inicio) {
+                document.querySelector('[name="periodo_inicio"]').value = datos.periodo_inicio;
+            }
+
+            if (datos.periodo_fin) {
+                document.querySelector('[name="periodo_fin"]').value = datos.periodo_fin;
             }
 
             if (datos.observaciones) {
@@ -374,6 +383,8 @@
                 datos.items.forEach(item => {
                     agregarItemRestaurado(item);
                 });
+            } else {
+                document.getElementById('noItemsMessage').style.display = 'block';
             }
 
             calcularTotales();
@@ -408,16 +419,14 @@
             </div>
         `;
 
-        // Insertar después de la alerta de estado
-        const alertaEstado = document.querySelector('.bg-yellow-50');
-        if (alertaEstado) {
-            alertaEstado.after(notificacion);
-        }
+        // Insertar después del header
+        const header = document.querySelector('.mb-6');
+        header.after(notificacion);
     }
 
     // Limpiar borrador
     function limpiarBorrador() {
-        if (confirm('¿Está seguro de que desea descartar el borrador guardado y restaurar los datos originales?')) {
+        if (confirm('¿Está seguro de que desea descartar el borrador guardado y empezar de nuevo?')) {
             localStorage.removeItem(STORAGE_KEY);
             location.reload();
         }
@@ -431,7 +440,7 @@
 
         const itemHTML = `
             <div class="item-row bg-gray-50 rounded-lg p-4 border border-gray-200" data-item="${itemId}">
-                ${itemData.id ? `<input type="hidden" name="items[${itemId}][id]" value="${itemData.id}">` : ''}
+                <input type="hidden" name="items[${itemId}][id]" value="${itemData.id || ''}">
                 <div class="flex items-start justify-between mb-4">
                     <h3 class="font-semibold text-gray-800">Item #${itemId}</h3>
                     <button type="button"
@@ -451,8 +460,8 @@
                                   rows="2"
                                   required
                                   placeholder="Descripción del trabajo realizado..."
-                                  oninput="guardarBorrador()"
-                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">${itemData.descripcion || ''}</textarea>
+                                  class="item-descripcion w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                  oninput="guardarBorrador()">${itemData.descripcion || ''}</textarea>
                     </div>
 
                     <!-- Cantidad -->
@@ -527,7 +536,8 @@
         // Guardar al cambiar campos generales
         document.querySelector('[name="contrato_id"]').addEventListener('change', guardarBorrador);
         document.querySelector('[name="fecha_radicacion"]').addEventListener('change', guardarBorrador);
-        document.querySelector('[name="periodo_cobrado"]').addEventListener('input', guardarBorrador);
+        document.querySelector('[name="periodo_inicio"]').addEventListener('change', guardarBorrador);
+        document.querySelector('[name="periodo_fin"]').addEventListener('change', guardarBorrador);
         document.querySelector('[name="observaciones"]').addEventListener('input', guardarBorrador);
     }
 
