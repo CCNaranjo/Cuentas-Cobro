@@ -167,25 +167,6 @@
                     </div>
                 </div>
 
-                <!-- Badge de Estado -->
-                <div class="mb-6">
-                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold
-                        @if($cuentaCobro->estado == 'borrador') bg-gray-100 text-gray-800
-                        @elseif($cuentaCobro->estado == 'radicada') bg-blue-100 text-blue-800
-                        @elseif($cuentaCobro->estado == 'en_revision') bg-yellow-100 text-yellow-800
-                        @elseif($cuentaCobro->estado == 'aprobada') bg-green-100 text-green-800
-                        @elseif($cuentaCobro->estado == 'rechazada') bg-red-100 text-red-800
-                        @elseif($cuentaCobro->estado == 'pagada') bg-purple-100 text-purple-800
-                        @elseif($cuentaCobro->estado == 'anulada') bg-gray-100 text-gray-600
-                        @endif">
-                        <i class="fas fa-circle mr-2" style="font-size: 0.5rem;"></i>
-                        {{ $cuentaCobro->estado_nombre }}
-                    </span>
-                    <p class="text-secondary mt-2">
-                        Creada el {{ $cuentaCobro->created_at->format('d/m/Y H:i') }} por {{ $cuentaCobro->creador->nombre }}
-                    </p>
-                </div>
-
                 <!-- Mensajes de Éxito/Error -->
                 @if(session('success'))
                     <div class="mb-6 bg-green-50 border-l-4 border-green-500 rounded-lg p-4 animate-slideIn">
@@ -349,15 +330,15 @@
 
                         <!-- Documentos Soporte -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center justify-between mb-4">
                                 <h2 class="text-lg font-bold text-gray-800 flex items-center">
                                     <i class="fas fa-paperclip text-primary mr-2"></i>
                                     Documentos Soporte
                                 </h2>
                                 @if($cuentaCobro->estado != 'anulada' && $cuentaCobro->estado != 'pagada' && $user->tienePermiso('cargar-documentos', $organizacionId))
                                 <button type="button" 
-                                        onclick="abrirModalSubirArchivo()"
-                                        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center text-sm">
+                                        onclick="document.getElementById('modalSubirDocumento').classList.remove('hidden')"
+                                        class="bg-gradient-to-r from-accent to-accent text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center text-sm">
                                     <i class="fas fa-upload mr-2"></i>
                                     Subir Documento
                                 </button>
@@ -403,39 +384,12 @@
                                             @endif
                                         </div>
                                     </div>
-
-                                    <!-- Acciones -->
-                                    <div class="flex items-center space-x-2 ml-3 flex-shrink-0">
-                                        <a href="{{ route('cuentas-cobro.archivos.descargar', $archivo->id) }}" 
-                                           class="text-accent hover:text-primary transition-colors p-2"
-                                           title="Descargar">
-                                            <i class="fas fa-download"></i>
-                                        </a>
-                                        @if($cuentaCobro->estado == 'borrador')
-                                        <form action="{{ route('cuentas-cobro.archivos.eliminar', [$cuentaCobro->id, $archivo->id]) }}" 
-                                              method="POST" 
-                                              onsubmit="return confirm('¿Está seguro de eliminar este archivo?')"
-                                              class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" 
-                                                    class="text-danger hover:text-red-700 transition-colors p-2"
-                                                    title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                        @endif
-                                    </div>
+                                    @endforeach
                                 </div>
-                                @endforeach
-                            </div>
                             @else
-                                <div class="text-center py-8">
-                                    <i class="fas fa-folder-open text-6xl text-gray-300 mb-3"></i>
-                                    <p class="text-secondary font-medium">No hay documentos cargados</p>
-                                    @if($cuentaCobro->estado != 'anulada' && $cuentaCobro->estado != 'pagada')
-                                    <p class="text-sm text-gray-400 mt-1">Sube el primer documento usando el botón superior</p>
-                                    @endif
+                                <div class="text-center py-8 bg-gray-50 rounded-lg">
+                                    <i class="fas fa-file text-4xl text-gray-300 mb-2"></i>
+                                    <p class="text-secondary">No hay documentos cargados</p>
                                 </div>
                             @endif
                         </div>
@@ -444,9 +398,9 @@
                     <!-- Columna Lateral -->
                     <div class="space-y-6">
                         <!-- Resumen de Valores -->
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-calculator text-primary mr-2"></i>
+                        <div class="bg-gradient-to-br from-primary to-primary-dark rounded-xl shadow-sm p-6 text-white">
+                            <h2 class="text-lg font-bold mb-6 flex items-center">
+                                <i class="fas fa-calculator mr-2"></i>
                                 Resumen Financiero
                             </h2>
 
@@ -527,7 +481,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" 
-                                            class="w-full bg-red-50 text-red-700 font-semibold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center">
+                                            class="w-full bg-red-50 text-red-700 font-semibold py-2 px-4 rounded-lg hover:bg-red-100 transition-all flex items-center justify-center">
                                         <i class="fas fa-trash mr-2"></i>
                                         Eliminar Cuenta de Cobro
                                     </button>
@@ -589,28 +543,22 @@
 </div>
 
 <!-- Modal Subir Documento -->
-<div id="modalSubirArchivo" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+<div id="modalSubirDocumento" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div class="p-6 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-                <h3 class="text-xl font-bold text-gray-800 flex items-center">
-                    <i class="fas fa-upload text-primary mr-2"></i>
-                    Subir Documento
-                </h3>
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Subir Documento</h3>
                 <button type="button" 
-                        onclick="cerrarModalSubirArchivo()"
+                        onclick="document.getElementById('modalSubirDocumento').classList.add('hidden')"
                         class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-        </div>
-        
-        <form action="{{ route('cuentas-cobro.archivos.subir', $cuentaCobro->id) }}" method="POST" enctype="multipart/form-data">
-            @csrf
             
-            <div class="p-6 space-y-4">
-                <!-- Tipo de Documento -->
-                <div>
+            <form action="{{ route('cuentas-cobro.subir-documento', $cuentaCobro->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Tipo de Documento <span class="text-red-500">*</span>
                     </label>
@@ -618,7 +566,6 @@
                             required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                         <option value="">Seleccione un tipo</option>
-                        <option value="cuenta_cobro">Cuenta de Cobro</option>
                         <option value="acta_recibido">Acta de Recibido</option>
                         <option value="informe">Informe de Actividades</option>
                         <option value="pila">Planilla PILA</option>
@@ -628,63 +575,31 @@
                     </select>
                 </div>
                 
-                <!-- Archivo -->
-                <div>
+                <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Archivo <span class="text-red-500">*</span>
                     </label>
-                    <div class="flex items-center justify-center w-full">
-                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
-                                <p class="text-sm text-gray-500">
-                                    <span class="font-semibold">Click para subir</span> o arrastra el archivo
-                                </p>
-                                <p class="text-xs text-gray-400 mt-1">PDF, DOC, XLS, Imágenes, ZIP (Máx. 10MB)</p>
-                            </div>
-                            <input type="file" 
-                                   name="archivo" 
-                                   required
-                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
-                                   class="hidden" 
-                                   onchange="mostrarNombreArchivo(this)">
-                        </label>
-                    </div>
-                    <p id="nombreArchivoSeleccionado" class="text-sm text-accent mt-2 hidden"></p>
-                </div>
-
-                <!-- Descripción -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Descripción (Opcional)
-                    </label>
-                    <textarea name="descripcion" 
-                              rows="3"
-                              placeholder="Agrega una descripción del archivo..."
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+                    <input type="file" 
+                           name="archivo" 
+                           required
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    <p class="text-xs text-gray-500 mt-1">Máximo 10MB. Formatos: PDF, DOC, XLS, Imágenes, ZIP</p>
                 </div>
                 
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p class="text-sm text-blue-800 flex items-start">
-                        <i class="fas fa-info-circle mr-2 mt-0.5"></i>
-                        <span>El archivo se subirá de forma segura al servidor FTP configurado.</span>
-                    </p>
+                <div class="flex items-center space-x-3">
+                    <button type="button" 
+                            onclick="document.getElementById('modalSubirDocumento').classList.add('hidden')"
+                            class="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all">
+                        Subir Documento
+                    </button>
                 </div>
-            </div>
-            
-            <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
-                <button type="button" 
-                        onclick="cerrarModalSubirArchivo()"
-                        class="px-6 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
-                    Cancelar
-                </button>
-                <button type="submit" 
-                        class="bg-gradient-to-r from-primary to-primary-dark text-white font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition-all flex items-center">
-                    <i class="fas fa-upload mr-2"></i>
-                    Subir Documento
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 

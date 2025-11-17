@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CuentaCobro;
 use App\Models\Contrato;
 use App\Models\ItemCuentaCobro;
-use App\Models\CuentaCobroArchivo;
+use App\Models\DocumentoSoporte;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -96,7 +96,7 @@ class CuentaCobroController extends Controller
 
         if ($request->has('buscar')) {
             $buscar = $request->buscar;
-            $query->where(function ($q) use ($buscar) {
+            $query->where(function($q) use ($buscar) {
                 $q->where('numero_cuenta_cobro', 'like', "%{$buscar}%")
                   ->orWhere('periodo_inicio', 'like', "%{$buscar}%")
                   ->orWhere('periodo_fin', 'like', "%{$buscar}%");
@@ -236,7 +236,7 @@ class CuentaCobroController extends Controller
             'contrato.supervisor',
             'creador',
             'items',
-            'archivos.subidoPor', // Cargar archivos FTP
+            'documentos',
             'historial.usuario'
         ])->findOrFail($id);
 
@@ -553,9 +553,9 @@ class CuentaCobroController extends Controller
     }
 
     /**
-     * Subir archivo al FTP
+     * Subir documento soporte
      */
-    public function subirArchivo(Request $request, $id)
+    public function subirDocumento(Request $request, $id)
     {
         $validated = $request->validate([
             'tipo_documento' => 'required|in:acta_recibido,informe,foto_evidencia,planilla,pila,formato_institucional,otro',
@@ -566,124 +566,38 @@ class CuentaCobroController extends Controller
 
         try {
             $archivo = $request->file('archivo');
+            $nombreArchivo = time() . '_' . $archivo->getClientOriginalName();
+            $ruta = $archivo->storeAs('cuentas_cobro/' . $cuentaCobro->id, $nombreArchivo, 'public');
 
-            // Generar nombre único para el archivo
-            $nombreOriginal = $archivo->getClientOriginalName();
-            $extension = $archivo->getClientOriginalExtension();
-            $nombreArchivo = $cuentaCobro->numero_cuenta_cobro . '_' .
-                $validated['tipo_documento'] . '_' .
-                time() . '.' . $extension;
-
-            // Definir directorio y ruta en el servidor FTP
-            $directorio = 'cuentas_cobro/' . $cuentaCobro->contrato->organizacion_id;
-            $ruta = $directorio . '/' . $nombreArchivo;
-
-            // Crear directorios si no existen
-            $this->crearDirectorioFTP($directorio);
-
-            // Subir archivo al servidor FTP
-            $contenido = file_get_contents($archivo->getRealPath());
-            Storage::disk('ftp')->put($ruta, $contenido);
-
-            // Guardar registro en la base de datos
-            CuentaCobroArchivo::create([
+            DocumentoSoporte::create([
                 'cuenta_cobro_id' => $cuentaCobro->id,
-                'subido_por' => Auth::id(),
-                'nombre_original' => $nombreOriginal,
-                'nombre_archivo' => $nombreArchivo,
-                'ruta' => $ruta,
-                'tipo_archivo' => $extension,
-                'mime_type' => $archivo->getMimeType(),
-                'tamaño' => $archivo->getSize(),
                 'tipo_documento' => $validated['tipo_documento'],
-                'descripcion' => $validated['descripcion'] ?? null,
+                'nombre_archivo' => $nombreArchivo,
+                'ruta_archivo' => $ruta,
+                'tamano_kb' => round($archivo->getSize() / 1024),
             ]);
 
-            return back()->with('success', 'Archivo subido exitosamente');
+            return back()->with('success', 'Documento subido exitosamente');
 
         } catch (\Exception $e) {
-            \Log::error('Error al subir archivo: ' . $e->getMessage());
-            return back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
+            return back()->with('error', 'Error al subir el documento: ' . $e->getMessage());
         }
     }
 
     /**
-     * Crear directorios en FTP si no existen
+     * Eliminar documento soporte
      */
-    private function crearDirectorioFTP($ruta)
+    public function eliminarDocumento($id, $documentoId)
     {
-        $directorios = explode('/', $ruta);
-        $rutaActual = '';
+        $documento = DocumentoSoporte::where('cuenta_cobro_id', $id)
+            ->where('id', $documentoId)
+            ->firstOrFail();
 
-        foreach ($directorios as $directorio) {
-            $rutaActual .= $directorio;
-
-            if (!Storage::disk('ftp')->exists($rutaActual)) {
-                try {
-                    Storage::disk('ftp')->makeDirectory($rutaActual);
-                } catch (\Exception $e) {
-                    \Log::warning("No se pudo crear directorio FTP: {$rutaActual}. Error: " . $e->getMessage());
-                }
-            }
-
-            $rutaActual .= '/';
-        }
-    }
-
-    /**
-     * Descargar archivo del FTP
-     */
-    public function descargarArchivo($archivoId)
-    {
         try {
-            $archivo = CuentaCobroArchivo::findOrFail($archivoId);
-            $cuentaCobro = $archivo->cuentaCobro;
-
-            // Verificar permisos (puedes agregar lógica adicional aquí)
-            $user = Auth::user();
-
-            // Descargar del servidor FTP
-            if (!Storage::disk('ftp')->exists($archivo->ruta)) {
-                return back()->with('error', 'El archivo no existe en el servidor');
-            }
-
-            $contenido = Storage::disk('ftp')->get($archivo->ruta);
-
-            return response($contenido)
-                ->header('Content-Type', $archivo->mime_type)
-                ->header('Content-Disposition', 'attachment; filename="' . $archivo->nombre_original . '"');
-
+            $documento->delete();
+            return back()->with('success', 'Documento eliminado exitosamente');
         } catch (\Exception $e) {
-            \Log::error('Error al descargar archivo: ' . $e->getMessage());
-            return back()->with('error', 'Error al descargar el archivo: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Eliminar archivo del FTP
-     */
-    public function eliminarArchivo($id, $archivoId)
-    {
-        try {
-            $archivo = CuentaCobroArchivo::where('cuenta_cobro_id', $id)
-                ->where('id', $archivoId)
-                ->firstOrFail();
-
-            $cuentaCobro = $archivo->cuentaCobro;
-
-            // Solo permitir eliminar en borrador
-            if ($cuentaCobro->estado !== 'borrador') {
-                return back()->with('error', 'Solo se pueden eliminar archivos de cuentas en borrador');
-            }
-
-            // El modelo se encarga de eliminar del FTP mediante el evento boot
-            $archivo->delete();
-
-            return back()->with('success', 'Archivo eliminado exitosamente');
-
-        } catch (\Exception $e) {
-            \Log::error('Error al eliminar archivo: ' . $e->getMessage());
-            return back()->with('error', 'Error al eliminar el archivo: ' . $e->getMessage());
+            return back()->with('error', 'Error al eliminar el documento: ' . $e->getMessage());
         }
     }
 }
