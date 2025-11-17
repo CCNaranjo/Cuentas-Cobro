@@ -285,6 +285,35 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/notificaciones', [UsuarioController::class, 'actualizarNotificaciones'])->name('perfil.actualizar-notificaciones');
         Route::post('/subir-foto', [UsuarioController::class, 'subirFotoPerfil'])->name('perfil.subir-foto');
     });
+
+    // ============================================
+    // NOTIFICACIONES
+    // ============================================
+    Route::prefix('notificaciones')->group(function () {
+        // Obtener todas las notificaciones del usuario
+        Route::get('/', [NotificacionController::class, 'index'])->name('notificaciones.index');
+
+        // Obtener conteo de notificaciones no leídas
+        Route::get('/conteo-no-leidas', [NotificacionController::class, 'conteoNoLeidas'])->name('notificaciones.conteo-no-leidas');
+
+        // Obtener solo notificaciones no leídas (para el dropdown)
+        Route::get('/no-leidas', [NotificacionController::class, 'noLeidas'])->name('notificaciones.no-leidas');
+
+        // Marcar todas como leídas
+        Route::post('/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcar-todas-leidas');
+
+        // Eliminar todas las notificaciones leídas
+        Route::delete('/eliminar-leidas', [NotificacionController::class, 'eliminarLeidas'])->name('notificaciones.eliminar-leidas');
+
+        // Obtener URL de redirección y marcar como leída
+        Route::get('/{id}/url', [NotificacionController::class, 'obtenerUrlRedireccion'])->name('notificaciones.url-redireccion');
+
+        // Ver una notificación específica (marca como leída)
+        Route::get('/{id}', [NotificacionController::class, 'show'])->name('notificaciones.show');
+
+        // Eliminar una notificación
+        Route::delete('/{id}', [NotificacionController::class, 'destroy'])->name('notificaciones.destroy');
+    });
 });
 
 Route::get('/welcome', function () {
