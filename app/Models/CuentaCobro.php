@@ -121,6 +121,15 @@ class CuentaCobro extends Model
             'comentario'      => $comentario,
         ]);
 
+        // Disparar evento de cambio de estado para notificaciones
+        event(new \App\Events\CuentaCobroEstadoCambiado(
+            $this,
+            $anterior,
+            $nuevoEstado,
+            $usuarioId,
+            $comentario
+        ));
+
         return true;
     }
 

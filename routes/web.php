@@ -16,6 +16,7 @@ use App\Http\Middleware\VerificarContratoEspecifico;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\CuentaCobroController;
+use App\Http\Controllers\NotificacionController;
 
 // REGISTRO MANUAL DE MIDDLEWARES
 app('router')->aliasMiddleware('verificar.permiso', VerificarPermiso::class);
