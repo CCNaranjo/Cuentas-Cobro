@@ -79,6 +79,13 @@ class ModulosSeeder extends Seeder
                 'activo' => true,
                 'parent_id' => null
             ],
+            [
+                'nombre' => 'Tesorería', 
+                'slug' => 'tesoreria', 
+                'icono' => 'fas fa-wallet', 
+                'orden' => 9,
+                'activo' => true,
+                'parent_id' => null],
         ];
 
         foreach ($modulos as $modulo) {

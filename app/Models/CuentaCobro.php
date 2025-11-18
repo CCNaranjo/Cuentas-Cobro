@@ -20,6 +20,8 @@ class CuentaCobro extends Model
         'valor_bruto',
         'retenciones_calculadas',
         'valor_neto',
+        'numero_comprobante_pago',
+        'fecha_pago_real',
         'pila_verificada',
         'estado',
         'observaciones',
@@ -122,6 +124,13 @@ class CuentaCobro extends Model
         ]);
 
         return true;
+    }
+
+    public function ordenesPago()
+    {
+        return $this->belongsToMany(OrdenPago::class, 'op_cuentas_cobro')
+                    ->withPivot('fecha_pago_efectivo', 'comprobante_bancario_id')
+                    ->withTimestamps();
     }
 
     // Scopes útiles

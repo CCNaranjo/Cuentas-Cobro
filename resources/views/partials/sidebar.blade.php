@@ -117,17 +117,16 @@
         @endif
 
         <!-- Tesorería (Solo para Tesorero) -->
-        @if(auth()->user()->tienePermiso('registrar-pago', session('organizacion_actual')))
+        @if(auth()->user()->tienePermiso('ver-ordenes-pago', session('organizacion_actual')))
         <div class="mb-6">
             <p class="px-4 text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
                 Tesorería
             </p>
             
-            <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+            <a href="{{ route('pagos.op.index') }}" class="sidebar-link group {{ request()->routeIs('cuentas-cobro.*') ? 'active' : '' }}" title="Ordenes de Pago">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('cuentas-cobro.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
                 <i class="fas fa-money-check-alt text-lg"></i>
                 <span>Pagos</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
             </a>
         </div>
         @endif

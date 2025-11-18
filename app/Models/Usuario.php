@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 
 class Usuario extends Authenticatable
 {
@@ -80,6 +81,11 @@ class Usuario extends Authenticatable
         return $this->hasMany(Contrato::class, 'supervisor_id');
     }
 
+    public function datosFinancierosContratista()
+    {
+        return $this->hasOne(DatosFinancierosContratista::class);
+    }
+
     /*
     public function cuentasCobro()
     {
@@ -152,7 +158,7 @@ class Usuario extends Authenticatable
     {
         $organizacionId = $organizacionId ?? session('organizacion_actual');
 
-        \Log::info("Verificando permiso: {$slugPermiso} para organización: {$organizacionId}");
+        Log::info("Verificando permiso: {$slugPermiso} para organización: {$organizacionId}");
 
         $rolesConPermiso = $this->roles()
             ->wherePivot('organizacion_id', $organizacionId)
@@ -162,7 +168,7 @@ class Usuario extends Authenticatable
             })
             ->get();
 
-        \Log::info("Roles con permiso encontrados: " . $rolesConPermiso->count());
+        Log::info("Roles con permiso encontrados: " . $rolesConPermiso->count());
 
         return $rolesConPermiso->isNotEmpty();
     }

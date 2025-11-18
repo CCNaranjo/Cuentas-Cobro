@@ -195,6 +195,8 @@ class RolesSeeder extends Seeder
             'ver-informacion-contratos',
             'ver-reportes-financieros',
             'agregar-comentarios',
+            'ver-ordenes-pago',
+            'aprobar-orden-pago',
         ];
         $this->asignarPermisosPorSlug($ordenadorGasto, $slugsOrdenador, 'Ordenador del Gasto');
 
@@ -205,12 +207,15 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ver-todas-cuentas',
             'procesar-pago',
-            'generar-ordenes-pago',
+            'registrar-orden-pago',
             'transferir-banco',
             'confirmar-pagos',
             'ver-reportes-financieros',
             'ver-documentos',
             'verificar-presupuesto-cuenta-cobro',
+            'ver-ordenes-pago',
+            'crear-orden-pago',
+            'anular-orden-pago',
         ];
         $this->asignarPermisosPorSlug($tesorero, $slugsTesorero, 'Tesorero');
 
