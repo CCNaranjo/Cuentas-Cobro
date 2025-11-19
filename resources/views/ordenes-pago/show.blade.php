@@ -87,7 +87,12 @@
                                     <td class="px-6 py-4 text-sm font-medium text-primary">{{ $cc->numero_cuenta_cobro }}</td>
                                     <td class="px-6 py-4 text-sm">{{ $cc->contrato->contratista->nombre }}</td>
                                     <td class="px-6 py-4 text-sm">{{ number_format($cc->valor_neto, 0, ',', '.') }}</td>
-                                    <td class="px-6 py-4 text-sm">{{ $cc->pivot->fecha_pago_efectivo ? $cc->pivot->fecha_pago_efectivo->format('d/m/Y') : 'Pendiente' }}</td>
+                                    <td class="px-6 py-4 text-sm">
+                                        {{ $cc->pivot->fecha_pago_efectivo 
+                                            ? \Carbon\Carbon::parse($cc->pivot->fecha_pago_efectivo)->format('d/m/Y') 
+                                            : 'Pendiente' 
+                                        }}
+                                    </td>
                                     <td class="px-6 py-4 text-sm">{{ $cc->pivot->comprobante_bancario_id ?? 'Pendiente' }}</td>
                                 </tr>
                             @endforeach

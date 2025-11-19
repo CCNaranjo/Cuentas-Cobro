@@ -159,9 +159,8 @@ class OrdenPagoController extends Controller
 
         return view('ordenes-pago.show', compact('ordenPago'));
     }
-
-
-    /**
+    
+   /**
      * Autorizar Orden de Pago (por Ordenador del Gasto)
      */
     public function autorizar($id)
@@ -174,37 +173,77 @@ class OrdenPagoController extends Controller
             abort(403, 'No tienes permiso para autorizar órdenes de pago');
         }
 
-        $ordenPago = OrdenPago::where('id', $id)
+        $ordenPago = OrdenPago::with('cuentasCobro.contrato')
+            ->where('id', $id)
             ->where('organizacion_id', $organizacionId)
             ->where('estado', 'creada')
             ->firstOrFail();
 
         DB::beginTransaction();
         try {
+            // Actualizar la orden de pago
             $ordenPago->update([
                 'aprobada_por_ordenador' => true,
                 'ordenador_id' => $user->id,
                 'estado' => 'autorizada',
+                'fecha_autorizacion' => now(),
             ]);
 
-            // Cambiar CC a 'en_proceso_pago'
+            // Cambiar estado de cada cuenta de cobro a 'en_proceso_pago'
             foreach ($ordenPago->cuentasCobro as $cuentaCobro) {
-                $cuentaCobro->cambiarEstado('en_proceso_pago', $user->id, 'Orden de pago autorizada');
+                
+                // Validar que la cuenta de cobro esté en estado 'aprobada_ordenador'
+                if ($cuentaCobro->estado !== 'aprobada_ordenador') {
+                    throw new \Exception(
+                        "La cuenta de cobro {$cuentaCobro->numero_cuenta_cobro} no está en estado 'aprobada_ordenador'. Estado actual: {$cuentaCobro->estado}"
+                    );
+                }
+
+                $nuevoEstado = 'en_proceso_pago';
+                $comentario = 'Orden de pago autorizada - ' . $ordenPago->numero_op;
+
+                // 🔥 USAR DIRECTAMENTE TU MÉTODO cambiarEstado DEL MODELO
+                $resultado = $cuentaCobro->cambiarEstado(
+                    $nuevoEstado,
+                    $user->id,
+                    $comentario
+                );
+
+                if (!$resultado) {
+                    throw new \Exception("No se pudo cambiar el estado de la cuenta de cobro {$cuentaCobro->numero_cuenta_cobro}");
+                }
+
+                Log::info('Estado de cuenta de cobro cambiado por autorización de OP', [
+                    'cuenta_cobro_id' => $cuentaCobro->id,
+                    'estado_anterior' => 'aprobada_ordenador',
+                    'estado_nuevo' => $nuevoEstado,
+                    'orden_pago_id' => $ordenPago->id,
+                    'usuario_id' => $user->id
+                ]);
             }
 
             DB::commit();
 
-            Log::info('Orden de pago autorizada', ['id' => $id, 'usuario_id' => $user->id]);
+            Log::info('Orden de pago autorizada y cuentas de cobro actualizadas', [
+                'orden_pago_id' => $id, 
+                'usuario_id' => $user->id,
+                'cuentas_actualizadas' => $ordenPago->cuentasCobro->count()
+            ]);
 
-            return back()->with('success', 'Orden de pago autorizada exitosamente');
+            return back()->with('success', 'Orden de pago autorizada exitosamente. ' . 
+                $ordenPago->cuentasCobro->count() . ' cuenta(s) de cobro cambiada(s) a "en proceso de pago".');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al autorizar OP', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Error al autorizar');
+            Log::error('Error al autorizar orden de pago', [
+                'error' => $e->getMessage(),
+                'orden_pago_id' => $id,
+                'usuario_id' => $user->id
+            ]);
+            
+            return back()->with('error', 'Error al autorizar la orden de pago: ' . $e->getMessage());
         }
     }
-
     /**
      * Registrar pago de Orden de Pago (por Tesorero)
      */
