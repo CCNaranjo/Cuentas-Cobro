@@ -61,75 +61,103 @@
         @endif
 
         <!-- Notifications -->
-        <div class="relative" x-data="{ open: false }">
-            <button 
-                @click="open = !open"
+        <div class="relative" x-data="notificaciones()">
+            <button
+                @click="toggleDropdown()"
                 class="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
             >
                 <i class="fas fa-bell text-xl"></i>
-                @php
-                    // Contar notificaciones reales cuando se implemente
-                    $notificacionesCount = 0;
-                    if (session('organizacion_actual')) {
-                        $notificacionesCount = \App\Models\VinculacionPendiente::where('organizacion_id', session('organizacion_actual'))
-                            ->where('estado', 'pendiente')
-                            ->count();
-                    }
-                @endphp
-                @if($notificacionesCount > 0)
-                <span class="absolute top-1 right-1 w-5 h-5 bg-danger rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {{ $notificacionesCount }}
+                <span x-show="conteoNoLeidas > 0"
+                      x-text="conteoNoLeidas"
+                      class="absolute top-1 right-1 w-5 h-5 bg-danger rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style="display: none;">
                 </span>
-                @endif
             </button>
 
             <!-- Dropdown Notificaciones -->
-            <div 
+            <div
                 x-show="open"
                 @click.away="open = false"
                 x-transition
-                class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
                 style="display: none;"
             >
                 <div class="p-4 border-b border-gray-200">
                     <div class="flex items-center justify-between">
                         <h3 class="font-semibold text-gray-800">Notificaciones</h3>
-                        @if($notificacionesCount > 0)
-                        <span class="bg-danger text-white text-xs px-2 py-0.5 rounded-full">{{ $notificacionesCount }}</span>
-                        @endif
+                        <span x-show="conteoNoLeidas > 0"
+                              x-text="conteoNoLeidas"
+                              class="bg-danger text-white text-xs px-2 py-0.5 rounded-full"
+                              style="display: none;">
+                        </span>
                     </div>
                 </div>
 
                 <div class="max-h-96 overflow-y-auto">
-                    @if($notificacionesCount > 0)
-                        <!-- Notificación de usuarios pendientes -->
-                        <a href="{{ route('usuarios.pendientes') }}" class="flex items-start p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                            <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mr-3 flex-shrink-0">
-                                <i class="fas fa-user-clock text-accent"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-sm text-gray-800 font-medium">Usuarios pendientes</p>
-                                <p class="text-xs text-secondary mt-1">{{ $notificacionesCount }} {{ $notificacionesCount == 1 ? 'usuario solicita' : 'usuarios solicitan' }} vinculación</p>
-                                <p class="text-xs text-accent mt-1 font-medium">Click para revisar</p>
-                            </div>
-                        </a>
-                    @else
+                    <template x-if="notificaciones.length === 0 && !cargando">
                         <!-- Estado vacío -->
                         <div class="p-8 text-center">
                             <i class="fas fa-bell-slash text-4xl text-gray-300 mb-2"></i>
                             <p class="text-sm text-secondary">No hay notificaciones nuevas</p>
                         </div>
-                    @endif
+                    </template>
+
+                    <template x-if="cargando">
+                        <div class="p-8 text-center">
+                            <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-2"></i>
+                            <p class="text-sm text-secondary">Cargando notificaciones...</p>
+                        </div>
+                    </template>
+
+                    <template x-for="notif in notificaciones" :key="notif.id">
+                        <a @click.prevent="abrirNotificacion(notif)"
+                           class="flex items-start p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 cursor-pointer"
+                           :class="{'bg-blue-50': !notif.leida}">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0"
+                                 :class="{
+                                    'bg-red-100': notif.prioridad === 'urgente',
+                                    'bg-orange-100': notif.prioridad === 'alta',
+                                    'bg-blue-100': notif.prioridad === 'normal',
+                                    'bg-gray-100': notif.prioridad === 'baja'
+                                 }">
+                                <i class="fas"
+                                   :class="{
+                                        'fa-file-invoice text-red-600': notif.tipo === 'cuenta_cobro_requiere_correccion',
+                                        'fa-check-circle text-green-600': notif.tipo === 'cuenta_cobro_aprobada',
+                                        'fa-money-bill-wave text-blue-600': notif.tipo === 'cuenta_cobro_pagada',
+                                        'fa-clock text-orange-600': notif.tipo === 'cuenta_cobro_radicada',
+                                        'fa-credit-card text-teal-600': notif.tipo === 'cuenta_cobro_en_proceso_pago',
+                                        'fa-ban text-gray-600': notif.tipo === 'cuenta_cobro_anulada',
+                                        'fa-file-invoice': !['cuenta_cobro_requiere_correccion', 'cuenta_cobro_aprobada', 'cuenta_cobro_pagada', 'cuenta_cobro_radicada', 'cuenta_cobro_en_proceso_pago', 'cuenta_cobro_anulada'].includes(notif.tipo)
+                                   }">
+                                </i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-800 font-medium truncate" x-text="notif.titulo"></p>
+                                <p class="text-xs text-secondary mt-1 line-clamp-2" x-text="notif.mensaje"></p>
+                                <p class="text-xs text-gray-400 mt-1" x-text="formatearFecha(notif.created_at)"></p>
+                            </div>
+                            <template x-if="!notif.leida">
+                                <div class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
+                            </template>
+                        </a>
+                    </template>
                 </div>
 
-                @if($notificacionesCount > 0)
-                <div class="p-3 border-t border-gray-200">
-                    <a href="{{ route('usuarios.pendientes') }}" class="text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center">
-                        Ver todas las notificaciones
-                        <i class="fas fa-arrow-right ml-2 text-xs"></i>
-                    </a>
-                </div>
-                @endif
+                <template x-if="notificaciones.length > 0">
+                    <div class="p-3 border-t border-gray-200 flex justify-between items-center">
+                        <button @click="marcarTodasLeidas()"
+                                class="text-xs text-gray-600 hover:text-primary font-medium">
+                            <i class="fas fa-check-double mr-1"></i>
+                            Marcar todas como leídas
+                        </button>
+                        <a href="{{ route('notificaciones.index') }}"
+                           class="text-xs text-primary hover:text-primary-dark font-medium flex items-center">
+                            Ver todas
+                            <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -231,11 +259,167 @@
     document.addEventListener('click', function(event) {
         const sidebar = document.querySelector('aside');
         const menuButton = event.target.closest('button[onclick="toggleMobileMenu()"]');
-        
+
         if (sidebar && !sidebar.contains(event.target) && !menuButton && !sidebar.classList.contains('hidden')) {
             sidebar.classList.add('hidden');
             sidebar.classList.remove('flex');
         }
     });
+
+    // Sistema de notificaciones con Alpine.js
+    function notificaciones() {
+        return {
+            open: false,
+            notificaciones: [],
+            conteoNoLeidas: 0,
+            cargando: false,
+            intervalo: null,
+
+            async init() {
+                await this.cargarNotificaciones();
+                await this.actualizarConteo();
+
+                // Actualizar cada 30 segundos
+                this.intervalo = setInterval(() => {
+                    this.actualizarConteo();
+                }, 30000);
+            },
+
+            async toggleDropdown() {
+                this.open = !this.open;
+                if (this.open) {
+                    await this.cargarNotificaciones();
+                }
+            },
+
+            async cargarNotificaciones() {
+                this.cargando = true;
+                try {
+                    const response = await fetch('{{ route("notificaciones.no-leidas") }}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.notificaciones = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error al cargar notificaciones:', error);
+                } finally {
+                    this.cargando = false;
+                }
+            },
+
+            async actualizarConteo() {
+                try {
+                    const response = await fetch('{{ route("notificaciones.conteo-no-leidas") }}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.conteoNoLeidas = data.conteo;
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar conteo:', error);
+                }
+            },
+
+            async abrirNotificacion(notif) {
+                try {
+                    // Obtener la URL de redirección
+                    const response = await fetch(`{{ url('notificaciones') }}/${notif.id}/url`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // Eliminar la notificación
+                        await this.eliminarNotificacion(notif.id);
+
+                        // Redirigir a la URL
+                        window.location.href = data.url;
+                    }
+                } catch (error) {
+                    console.error('Error al abrir notificación:', error);
+                }
+            },
+
+            async eliminarNotificacion(id) {
+                try {
+                    await fetch(`{{ url('notificaciones') }}/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    // Actualizar la lista
+                    this.notificaciones = this.notificaciones.filter(n => n.id !== id);
+                    await this.actualizarConteo();
+                } catch (error) {
+                    console.error('Error al eliminar notificación:', error);
+                }
+            },
+
+            async marcarTodasLeidas() {
+                try {
+                    const response = await fetch('{{ route("notificaciones.marcar-todas-leidas") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Actualizar el estado local
+                        this.notificaciones.forEach(n => n.leida = true);
+                        await this.actualizarConteo();
+                    }
+                } catch (error) {
+                    console.error('Error al marcar todas como leídas:', error);
+                }
+            },
+
+            formatearFecha(fecha) {
+                const ahora = new Date();
+                const fechaNotif = new Date(fecha);
+                const diffMs = ahora - fechaNotif;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHoras = Math.floor(diffMs / 3600000);
+                const diffDias = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) return 'Ahora';
+                if (diffMins < 60) return `Hace ${diffMins} min`;
+                if (diffHoras < 24) return `Hace ${diffHoras}h`;
+                if (diffDias < 7) return `Hace ${diffDias} día${diffDias > 1 ? 's' : ''}`;
+
+                return fechaNotif.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+            },
+
+            destroy() {
+                if (this.intervalo) {
+                    clearInterval(this.intervalo);
+                }
+            }
+        };
+    }
 </script>
 @endpush

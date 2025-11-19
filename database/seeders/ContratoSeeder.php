@@ -120,7 +120,13 @@ class ContratoSeeder extends Seeder
         $contenido = $this->generarContenidoArchivo($datos['tipo'], $contrato);
 
         try {
-            $subido = Storage::disk('ftp')->put($ruta, $contenido);
+            // Intentar usar FTP, si falla usar public
+            try {
+                $subido = Storage::disk('ftp')->put($ruta, $contenido);
+            } catch (\Exception $ftpError) {
+                $this->command->warn("FTP no disponible, usando almacenamiento local");
+                $subido = Storage::disk('public')->put($ruta, $contenido);
+            }
 
             if ($subido) {
                 ContratoArchivo::create([

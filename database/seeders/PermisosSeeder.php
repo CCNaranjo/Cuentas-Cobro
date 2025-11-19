@@ -119,6 +119,13 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Ver configuración', 'slug' => 'ver-configuracion', 'descripcion' => 'Ver ajustes del sistema', 'modulo_id' => 8, 'tipo' => 'lectura', 'es_organizacion' => true],
             ['nombre' => 'Editar configuración global', 'slug' => 'editar-configuracion-global', 'descripcion' => 'Modificar configuración del sistema', 'modulo_id' => 8, 'tipo' => 'escritura', 'es_organizacion' => null], // Solo Admin Global
             ['nombre' => 'Editar configuración organización', 'slug' => 'editar-configuracion-organizacion', 'descripcion' => 'Modificar ajustes de organización', 'modulo_id' => 8, 'tipo' => 'escritura', 'es_organizacion' => true],
+
+            // ============================================
+            // NOTIFICACIONES (modulo_id: 9)
+            // ============================================
+            ['nombre' => 'Ver notificaciones', 'slug' => 'ver-notificaciones', 'descripcion' => 'Ver notificaciones del sistema', 'modulo_id' => 9, 'tipo' => 'lectura', 'es_organizacion' => true],
+            ['nombre' => 'Marcar notificaciones leídas', 'slug' => 'marcar-notificaciones-leidas', 'descripcion' => 'Marcar notificaciones como leídas', 'modulo_id' => 9, 'tipo' => 'accion', 'es_organizacion' => true],
+            ['nombre' => 'Eliminar notificaciones', 'slug' => 'eliminar-notificaciones', 'descripcion' => 'Eliminar notificaciones', 'modulo_id' => 9, 'tipo' => 'eliminacion', 'es_organizacion' => true],
         ];
 
         foreach ($permisos as $permiso) {

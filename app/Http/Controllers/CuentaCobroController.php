@@ -27,13 +27,31 @@ class CuentaCobroController extends Controller
         $query = CuentaCobro::with(['contrato.contratista', 'creador']);
 
         // ========================================
-        // SEGMENTACIÓN DE VISTAS POR PERMISOS
+        // SEGMENTACIÓN DE VISTAS POR PERMISOS Y ROL
         // ========================================
+
+        // Obtener rol actual del usuario
+        $rolActual = $user->roles()
+            ->wherePivot('organizacion_id', $organizacionId)
+            ->wherePivot('estado', 'activo')
+            ->first();
+
+        // Verificar permisos básicos
         if ($user->tienePermiso('ver-todas-cuentas', $organizacionId)) {
             // Admin Organización, Ordenador Gasto, Supervisor, Tesorero, Revisor Contratación
-            $query->whereHas('contrato', function($q) use ($organizacionId) {
-                $q->where('organizacion_id', $organizacionId);
-            });
+
+            // El supervisor solo ve cuentas de los contratos que supervisa
+            if ($rolActual && $rolActual->nombre === 'supervisor') {
+                $query->whereHas('contrato', function($q) use ($user, $organizacionId) {
+                    $q->where('organizacion_id', $organizacionId)
+                      ->where('supervisor_id', $user->id);
+                });
+            } else {
+                // Otros roles ven todas las cuentas de la organización
+                $query->whereHas('contrato', function($q) use ($organizacionId) {
+                    $q->where('organizacion_id', $organizacionId);
+                });
+            }
         } elseif ($user->tienePermiso('ver-mis-cuentas', $organizacionId)) {
             // Contratista - Solo sus cuentas
             $query->whereHas('contrato', function($q) use ($user) {
@@ -43,35 +61,31 @@ class CuentaCobroController extends Controller
             abort(403, 'No tienes permiso para ver cuentas de cobro');
         }
 
-        // FILTROS ADICIONALES POR ROL
-        $rolActual = $user->roles()
-            ->wherePivot('organizacion_id', $organizacionId)
-            ->wherePivot('estado', 'activo')
-            ->first();
-
+        // FILTROS ADICIONALES POR ROL (estados predeterminados)
         if ($rolActual) {
             switch ($rolActual->nombre) {
                 case 'supervisor':
-                    // Ver solo las radicadas o en corrección de supervisor
+                    // Ver solo las radicadas o en corrección de supervisor (por defecto)
+                    // Pero puede ver todos los estados si filtra explícitamente
                     if (!$request->has('estado')) {
                         $query->whereIn('estado', ['radicada', 'en_correccion_supervisor']);
                     }
                     break;
-                
+
                 case 'revisor_contratacion':
                     // Ver solo certificadas por supervisor o en corrección de contratación
                     if (!$request->has('estado')) {
                         $query->whereIn('estado', ['certificado_supervisor', 'en_correccion_contratacion']);
                     }
                     break;
-                
+
                 case 'tesorero':
                     // Ver verificadas de contratación, aprobadas y en proceso de pago
                     if (!$request->has('estado')) {
                         $query->whereIn('estado', ['verificado_contratacion', 'aprobada_ordenador', 'en_proceso_pago', 'pagada']);
                     }
                     break;
-                
+
                 case 'ordenador_gasto':
                     // Ver solo verificadas de presupuesto
                     if (!$request->has('estado')) {
@@ -242,14 +256,28 @@ class CuentaCobroController extends Controller
 
         // Verificar acceso
         $contratoOrgId = $cuentaCobro->contrato->organizacion_id;
-        
+
+        // Obtener rol actual del usuario
+        $rolActual = $user->roles()
+            ->wherePivot('organizacion_id', $contratoOrgId)
+            ->wherePivot('estado', 'activo')
+            ->first();
+
         if (!$user->tienePermiso('ver-todas-cuentas', $contratoOrgId)) {
+            // Si no tiene permiso para ver todas, verificar si puede ver sus propias cuentas
             if ($user->tienePermiso('ver-mis-cuentas', $contratoOrgId)) {
                 if ($cuentaCobro->contrato->contratista_id != $user->id) {
                     abort(403, 'No tienes acceso a esta cuenta de cobro');
                 }
             } else {
                 abort(403, 'No tienes acceso a esta cuenta de cobro');
+            }
+        } else {
+            // Tiene permiso para ver todas las cuentas, pero si es supervisor verificar que sea su contrato
+            if ($rolActual && $rolActual->nombre === 'supervisor') {
+                if ($cuentaCobro->contrato->supervisor_id != $user->id) {
+                    abort(403, 'No tienes acceso a esta cuenta de cobro. Solo puedes ver cuentas de los contratos que supervisas.');
+                }
             }
         }
 
