@@ -96,7 +96,7 @@ class CuentaCobroController extends Controller
 
         if ($request->has('buscar')) {
             $buscar = $request->buscar;
-            $query->where(function($q) use ($buscar) {
+            $query->where(function ($q) use ($buscar) {
                 $q->where('numero_cuenta_cobro', 'like', "%{$buscar}%")
                     ->orWhere('periodo_inicio', 'like', "%{$buscar}%")
                     ->orWhere('periodo_fin', 'like', "%{$buscar}%");
@@ -123,12 +123,14 @@ class CuentaCobroController extends Controller
 
         // Contratistas solo ven sus contratos
         if ($user->tienePermiso('ver-mis-contratos', $organizacionId)) {
-            $contratos = Contrato::where('contratista_id', $user->id)
-                ->where('estado', 'activo')
+            $contratos = Contrato::where('estado', 'activo')
+                ->where('contratista_id', $user->id)
+                ->with(['contratista'])
                 ->get();
         } else {
-            $contratos = Contrato::where('organizacion_id', $organizacionId)
-                ->where('estado', 'activo')
+            $contratos = Contrato::where('estado', 'activo')
+                ->where('organizacion_id', $organizacionId)
+                ->with(['contratista'])
                 ->get();
         }
 
@@ -150,9 +152,13 @@ class CuentaCobroController extends Controller
         $user = Auth::user();
         $organizacionId = session('organizacion_actual');
 
+        if (!$user->tienePermiso('crear-cuenta-cobro', $organizacionId)) {
+            return back()->withErrors(['error' => 'No tienes permiso para crear cuentas de cobro']);
+        }
+
         $validated = $request->validate([
             'contrato_id' => 'required|exists:contratos,id',
-            'fecha_radicacion' => 'nullable|date',
+            'fecha_radicacion' => 'required|date',
             'periodo_inicio' => 'required|date',
             'periodo_fin' => 'required|date|after_or_equal:periodo_inicio',
             'observaciones' => 'nullable|string',
@@ -167,25 +173,20 @@ class CuentaCobroController extends Controller
             'archivos.*.descripcion' => 'nullable|string',
         ]);
 
-        $contrato = Contrato::findOrFail($validated['contrato_id']);
-
-        if ($contrato->organizacion_id != $organizacionId) {
-            abort(403);
-        }
-
         DB::beginTransaction();
         try {
-            $numero = (new CuentaCobro())->generarNumero();
-
+            // Crear cuenta de cobro
             $cuentaCobro = CuentaCobro::create([
                 'contrato_id' => $validated['contrato_id'],
-                'numero_cuenta_cobro' => $numero,
+                'numero_cuenta_cobro' => (new CuentaCobro())->generarNumero(),
                 'fecha_radicacion' => $validated['fecha_radicacion'],
                 'periodo_inicio' => $validated['periodo_inicio'],
                 'periodo_fin' => $validated['periodo_fin'],
-                'observaciones' => $validated['observaciones'],
+                'valor_bruto' => 0,
+                'valor_neto' => 0,
                 'estado' => 'borrador',
-                'created_by' => $user->id,
+                'observaciones' => $validated['observaciones'],
+                'created_by' => Auth::id(),
             ]);
 
             // Crear items
@@ -193,10 +194,10 @@ class CuentaCobroController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $item = ItemCuentaCobro::create([
                     'cuenta_cobro_id' => $cuentaCobro->id,
-                    'descripcion' => $item['descripcion'],
-                    'cantidad' => $item['cantidad'],
-                    'valor_unitario' => $item['valor_unitario'],
-                    'porcentaje_avance' => $item['porcentaje_avance'] ?? 0,
+                    'descripcion' => $itemData['descripcion'],
+                    'cantidad' => $itemData['cantidad'],
+                    'valor_unitario' => $itemData['valor_unitario'],
+                    'porcentaje_avance' => $itemData['porcentaje_avance'] ?? null,
                 ]);
 
                 // Calcular valor bruto acumulado
@@ -362,12 +363,14 @@ class CuentaCobroController extends Controller
      */
     public function show($id)
     {
+        /** @var \App\Models\Usuario $user */
         $user = Auth::user();
         $organizacionId = session('organizacion_actual');
 
         $cuentaCobro = CuentaCobro::with([
             'contrato.contratista',
             'contrato.supervisor',
+            'creador',
             'items',
             'archivos.subidoPor',
             'historial.usuario'
@@ -389,39 +392,51 @@ class CuentaCobroController extends Controller
         return view('cuentas_cobro.show', compact('cuentaCobro'));
     }
 
-        /**
-     * Formulario edición (borrador o en corrección)
+    /**
+     * Mostrar formulario de edición
      */
     public function edit($id)
     {
-        $user = Auth::user();
-        $organizacionId = session('organizacion_actual');
+        $cuentaCobro = CuentaCobro::with(['items', 'contrato'])->findOrFail($id);
 
-        $cuentaCobro = CuentaCobro::with(['contrato', 'items'])->findOrFail($id);
+        // Solo se puede editar si está en borrador
+        $estadosPermitidos = [
+            'borrador',
+            'en_correccion_supervisor',
+            'en_correccion_contratacion',
+        ];
 
-        // Permitir edición en borrador o estados de corrección
-        if (!in_array($cuentaCobro->estado, ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion']) || 
-            $cuentaCobro->contrato->organizacion_id != $organizacionId ||
-            $cuentaCobro->contrato->contratista_id != $user->id) {  // Solo el contratista puede editar en corrección
-            abort(403, 'No puedes editar esta cuenta de cobro');
+        // Verificamos si el estado actual NO está en la lista de estados permitidos
+        if (!in_array($cuentaCobro->estado, $estadosPermitidos)) {
+            return back()->with('error', 'Solo se pueden editar cuentas de cobro en estado borrador o en corrección');
         }
 
-        $contratos = Contrato::where('contratista_id', $user->id)->where('estado', 'activo')->get();
+        $contratos = Contrato::where('estado', 'activo')->get();
 
         return view('cuentas_cobro.edit', compact('cuentaCobro', 'contratos'));
     }
 
     /**
-     * Actualizar cuenta (borrador o en corrección)
+     * Actualizar cuenta de cobro
      */
     public function update(Request $request, $id)
     {
-        $user = Auth::user();
-        $organizacionId = session('organizacion_actual');
+        $cuentaCobro = CuentaCobro::findOrFail($id);
+
+        $estadosPermitidos = [
+            'borrador',
+            'en_correccion_supervisor',
+            'en_correccion_contratacion',
+        ];
+
+        // Verificamos si el estado actual NO está en la lista de estados permitidos
+        if (!in_array($cuentaCobro->estado, $estadosPermitidos)) {
+            return back()->with('error', 'Solo se pueden editar cuentas de cobro en estado borrador o en corrección');
+        }
 
         $validated = $request->validate([
             'contrato_id' => 'required|exists:contratos,id',
-            'fecha_radicacion' => 'nullable|date',
+            'fecha_radicacion' => 'required|date',
             'periodo_inicio' => 'required|date',
             'periodo_fin' => 'required|date|after_or_equal:periodo_inicio',
             'observaciones' => 'nullable|string',
@@ -433,17 +448,6 @@ class CuentaCobroController extends Controller
             'items.*.porcentaje_avance' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $cuentaCobro = CuentaCobro::findOrFail($id);
-
-        // Permitir actualización en borrador o estados de corrección
-        if (!in_array($cuentaCobro->estado, ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion']) || 
-            $cuentaCobro->contrato->organizacion_id != $organizacionId ||
-            $cuentaCobro->contrato->contratista_id != $user->id) {
-            abort(403, 'No puedes actualizar esta cuenta de cobro');
-        }
-
-        $contrato = Contrato::findOrFail($validated['contrato_id']);
-
         DB::beginTransaction();
         try {
             $cuentaCobro->update([
@@ -454,40 +458,35 @@ class CuentaCobroController extends Controller
                 'observaciones' => $validated['observaciones'],
             ]);
 
-            $itemIds = [];
+            $idsEnActualizacion = collect($validated['items'])
+                ->pluck('id')
+                ->filter()
+                ->toArray();
 
-            $valorBruto = 0;
+            $cuentaCobro->items()
+                ->whereNotIn('id', $idsEnActualizacion)
+                ->delete();
 
             foreach ($validated['items'] as $itemData) {
-                $item = ItemCuentaCobro::updateOrCreate(
-                    ['id' => $itemData['id'] ?? null, 'cuenta_cobro_id' => $cuentaCobro->id],
-                    [
+                if (isset($itemData['id'])) {
+                    ItemCuentaCobro::where('id', $itemData['id'])->update([
                         'descripcion' => $itemData['descripcion'],
                         'cantidad' => $itemData['cantidad'],
                         'valor_unitario' => $itemData['valor_unitario'],
-                        'porcentaje_avance' => $itemData['porcentaje_avance'] ?? 0,
-                    ]
-                );
-
-                $itemIds[] = $item->id;
-
-                $valorBruto += $itemData['cantidad'] * $itemData['valor_unitario'];
+                        'porcentaje_avance' => $itemData['porcentaje_avance'] ?? null,
+                    ]);
+                } else {
+                    ItemCuentaCobro::create([
+                        'cuenta_cobro_id' => $cuentaCobro->id,
+                        'descripcion' => $itemData['descripcion'],
+                        'cantidad' => $itemData['cantidad'],
+                        'valor_unitario' => $itemData['valor_unitario'],
+                        'porcentaje_avance' => $itemData['porcentaje_avance'] ?? null,
+                    ]);
+                }
             }
 
-            ItemCuentaCobro::where('cuenta_cobro_id', $cuentaCobro->id)
-                ->whereNotIn('id', $itemIds)
-                ->delete();
-
-            $retencionFuente = $valorBruto * ($contrato->porcentaje_retencion_fuente / 100);
-            $estampilla = $valorBruto * ($contrato->porcentaje_estampilla / 100);
-            $valorNeto = $valorBruto - $retencionFuente - $estampilla;
-
-            $cuentaCobro->update([
-                'valor_bruto' => $valorBruto,
-                'valor_neto' => $valorNeto,
-                'retencion_fuente' => $retencionFuente,
-                'estampilla' => $estampilla,
-            ]);
+            $cuentaCobro->fresh()->calcularRetenciones();
 
             DB::commit();
 
@@ -496,59 +495,136 @@ class CuentaCobroController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', 'Error al actualizar la cuenta de cobro: ' . $e->getMessage());
         }
     }
 
     /**
-     * Eliminar cuenta (borrador)
+     * Eliminar cuenta de cobro
      */
     public function destroy($id)
     {
-        $user = Auth::user();
-        $organizacionId = session('organizacion_actual');
-
         $cuentaCobro = CuentaCobro::findOrFail($id);
 
-        if ($cuentaCobro->estado != 'borrador' || $cuentaCobro->contrato->organizacion_id != $organizacionId) {
-            abort(403);
+        if ($cuentaCobro->estado !== 'borrador') {
+            return back()->with('error', 'Solo se pueden eliminar cuentas de cobro en estado borrador');
         }
-
-        $cuentaCobro->delete();
-
-        return redirect()->route('cuentas-cobro.index')
-            ->with('success', 'Cuenta de cobro eliminada');
-    }
-
-    /**
-     * Cambiar estado de cuenta
-     */
-    public function cambiarEstado(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'nuevo_estado' => 'required|in:radicada,certificado_supervisor,en_correccion_supervisor,verificado_contratacion,en_correccion_contratacion,verificado_presupuesto,aprobada_ordenador,en_proceso_pago,pagada,anulada',
-            'comentario' => 'nullable|string',
-        ]);
-
-        $cuentaCobro = CuentaCobro::findOrFail($id);
-        $contrato = $cuentaCobro->contrato;
-
-        $estadoAnterior = $cuentaCobro->estado;
-        $nuevoEstado = $validated['nuevo_estado'];
-
-        // Validar transiciones específicas
-        // Por ejemplo, desde en_correccion_* solo permitir a radicada si es el contratista
-        if (str_starts_with($estadoAnterior, 'en_correccion_') && $nuevoEstado === 'radicada') {
-            $user = Auth::user();
-            if ($contrato->contratista_id !== $user->id) {
-                return back()->with('error', 'Solo el contratista puede radicar nuevamente una cuenta en corrección');
-            }
-        }
-
-        // Otras validaciones de transiciones (agrega según tu lógica de flujo)
 
         DB::beginTransaction();
         try {
+            $cuentaCobro->delete();
+            DB::commit();
+
+            return redirect()
+                ->route('cuentas-cobro.index')
+                ->with('success', 'Cuenta de cobro eliminada exitosamente');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al eliminar la cuenta de cobro: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * ========================================
+     * CAMBIAR ESTADO - FLUJO COMPLETO
+     * ========================================
+     * Matriz de Transición de Estados y Permisos
+     */
+    public function cambiarEstado(Request $request, $id)
+    {
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'nuevo_estado' => 'required|in:borrador,radicada,en_correccion_supervisor,certificado_supervisor,en_correccion_contratacion,verificado_contratacion,verificado_presupuesto,aprobada_ordenador,en_proceso_pago,pagada,anulada',
+            'comentario' => 'nullable|string',
+        ]);
+
+        $cuentaCobro = CuentaCobro::with('contrato')->findOrFail($id);
+        $contrato = $cuentaCobro->contrato;
+        $organizacionId = $contrato->organizacion_id;
+
+        // ========================================
+        // MATRIZ DE PERMISOS POR TRANSICIÓN
+        // ========================================
+        $transicionesPermitidas = [
+            'borrador' => [
+                'radicada' => 'radicar-cuenta-cobro', // Contratista
+            ],
+            'radicada' => [
+                'certificado_supervisor' => 'revisar-cuenta-cobro', // Supervisor
+                'en_correccion_supervisor' => 'rechazar-cuenta-cobro', // Supervisor
+            ],
+            'en_correccion_supervisor' => [
+                'radicada' => 'radicar-cuenta-cobro', // Contratista corrige y re-radica
+            ],
+            'certificado_supervisor' => [
+                'verificado_contratacion' => 'verificar-legal-cuenta-cobro', // Revisor Contratación
+                'en_correccion_contratacion' => 'rechazar-cuenta-cobro', // Revisor Contratación
+            ],
+            'en_correccion_contratacion' => [
+                'certificado_supervisor' => 'revisar-cuenta-cobro', // Supervisor re-certifica
+            ],
+            'verificado_contratacion' => [
+                'verificado_presupuesto' => 'verificar-presupuesto-cuenta-cobro', // Tesorero (Fase 1)
+            ],
+            'verificado_presupuesto' => [
+                'aprobada_ordenador' => 'aprobar-finalmente', // Ordenador del Gasto
+            ],
+            'aprobada_ordenador' => [
+                'en_proceso_pago' => 'generar-ordenes-pago', // Tesorero (Fase 2)
+            ],
+            'en_proceso_pago' => [
+                'pagada' => 'procesar-pago', // Tesorero
+            ],
+        ];
+
+        // Validar que la transición sea válida
+        $estadoActual = $cuentaCobro->estado;
+        $nuevoEstado = $validated['nuevo_estado'];
+
+        if (!isset($transicionesPermitidas[$estadoActual][$nuevoEstado])) {
+            return back()->with('error', "Transición de estado no válida: {$estadoActual} → {$nuevoEstado}");
+        }
+
+        $permisoRequerido = $transicionesPermitidas[$estadoActual][$nuevoEstado];
+
+        // Validar permiso
+        if (!$user->tienePermiso($permisoRequerido, $organizacionId)) {
+            return back()->with('error', "No tienes permiso para realizar esta acción. Permiso requerido: {$permisoRequerido}");
+        }
+
+        // VALIDACIONES ADICIONALES
+        if ($nuevoEstado === 'radicada') {
+            // Validar que tenga items
+            if ($cuentaCobro->items()->count() === 0) {
+                return back()->with('error', 'Debe agregar al menos un item antes de radicar');
+            }
+
+            // Validar saldo disponible del contrato
+            $saldoDisponible = $contrato->valor_total - $contrato->valor_pagado;
+            if ($cuentaCobro->valor_neto > $saldoDisponible) {
+                return back()->with('error', 'El valor de la cuenta excede el saldo disponible del contrato');
+            }
+        }
+
+        if ($nuevoEstado === 'verificado_presupuesto') {
+            // Aquí se validaría CDP/RP (por implementar)
+            // Por ahora solo validamos que exista saldo
+            $saldoDisponible = $contrato->valor_total - $contrato->valor_pagado;
+            if ($cuentaCobro->valor_neto > $saldoDisponible) {
+                return back()->with('error', 'No hay saldo presupuestal disponible');
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $estadoAnterior = $cuentaCobro->estado;
+
+            // Cambiar estado
             $resultado = $cuentaCobro->cambiarEstado(
                 $nuevoEstado,
                 Auth::id(),
@@ -560,7 +636,6 @@ class CuentaCobroController extends Controller
                 return back()->with('error', 'No se pudo cambiar el estado');
             }
 
-            // Si se aprueba por ordenador, preparar para pago (pero no cambiar aquí, ya que OP se crea separado)
             // Si se paga, actualizar valor_pagado del contrato
             if (in_array($nuevoEstado, ['pagada'])) {
                 $contrato->recalcularValorPagado();
@@ -585,10 +660,29 @@ class CuentaCobroController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Estado cambiado exitosamente');
+            // Mensajes personalizados según el estado
+            $mensajes = [
+                'radicada' => 'Cuenta de cobro radicada exitosamente. Ahora será revisada por el supervisor.',
+                'certificado_supervisor' => 'Cuenta certificada. Ahora será verificada por el área de contratación.',
+                'en_correccion_supervisor' => 'Cuenta devuelta al contratista para correcciones.',
+                'verificado_contratacion' => 'Documentación legal verificada. Ahora será validado el presupuesto.',
+                'en_correccion_contratacion' => 'Cuenta devuelta al supervisor para ajustes legales.',
+                'verificado_presupuesto' => 'Presupuesto verificado. Pendiente de aprobación final del ordenador del gasto.',
+                'aprobada_ordenador' => 'Cuenta aprobada. Se procederá a generar la orden de pago.',
+                'en_proceso_pago' => 'Orden de pago generada. Pendiente de ejecución.',
+                'pagada' => 'Pago registrado exitosamente.',
+                'anulada' => 'Cuenta de cobro anulada.',
+            ];
+
+            return back()->with('success', $mensajes[$nuevoEstado] ?? 'Estado cambiado exitosamente');
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error al cambiar estado de cuenta de cobro', [
+                'error' => $e->getMessage(),
+                'cuenta_cobro_id' => $id
+            ]);
+
             return back()->with('error', 'Error al cambiar el estado: ' . $e->getMessage());
         }
     }
@@ -707,10 +801,15 @@ class CuentaCobroController extends Controller
 
             $nuevoArchivo = CuentaCobroArchivo::create([
                 'cuenta_cobro_id' => $cuentaCobro->id,
-                'tipo_documento' => $validated['tipo_documento'],
+                'subido_por' => Auth::id(),
+                'nombre_original' => $nombreOriginal,
                 'nombre_archivo' => $nombreArchivo,
-                'ruta_archivo' => $ruta,
-                'tamano_kb' => round($archivo->getSize() / 1024),
+                'ruta' => $ruta,
+                'tipo_archivo' => $extension,
+                'mime_type' => $archivo->getMimeType(),
+                'tamaño' => $archivo->getSize(),
+                'tipo_documento' => $validated['tipo_documento'],
+                'descripcion' => $validated['descripcion'] ?? null,
             ]);
 
             DB::commit();
@@ -785,4 +884,3 @@ class CuentaCobroController extends Controller
         }
     }
 }
-
