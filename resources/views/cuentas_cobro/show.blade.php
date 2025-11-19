@@ -59,7 +59,7 @@
                             @endphp
 
                             {{-- EDITAR - Solo en borrador --}}
-                            @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('editar-cuenta-cobro', $organizacionId))
+                            @if($user->tienePermiso('editar-cuenta-cobro', $organizacionId))
                                 <a href="{{ route('cuentas-cobro.edit', $cuentaCobro->id) }}" 
                                    class="bg-gradient-to-r from-accent to-accent text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
                                     <i class="fas fa-edit mr-2"></i>
@@ -67,13 +67,13 @@
                                 </a>
                             @endif
                             
-                            {{-- RADICAR - Borrador → Radicada --}}
-                            @if($cuentaCobro->estado == 'borrador' && $user->tienePermiso('radicar-cuenta-cobro', $organizacionId))
+                            {{-- RADICAR - Borrador o En Corrección → Radicada --}}
+                            @if(in_array($cuentaCobro->estado, ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion']) && $user->tienePermiso('radicar-cuenta-cobro', $organizacionId))
                                 <button type="button" 
                                         onclick="cambiarEstadoRapido('radicada', 'Radicar Cuenta de Cobro')"
                                         class="bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
                                     <i class="fas fa-paper-plane mr-2"></i>
-                                    Radicar
+                                    {{ $cuentaCobro->estado == 'borrador' ? 'Radicar' : 'Radicar Nuevamente' }}
                                 </button>
                             @endif
 
@@ -139,22 +139,20 @@
 
                             {{-- GENERAR ORDEN DE PAGO - Aprobada Ordenador → En Proceso Pago --}}
                             @if($cuentaCobro->estado == 'aprobada_ordenador' && $user->tienePermiso('generar-ordenes-pago', $organizacionId))
-                                <button type="button" 
-                                        onclick="cambiarEstadoRapido('en_proceso_pago', 'Generar Orden de Pago')"
-                                        class="bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                <a href="{{ route('pagos.op.create', ['cuenta_id' => $cuentaCobro->id]) }}" 
+                                   class="bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
                                     <i class="fas fa-file-invoice-dollar mr-2"></i>
                                     Generar O.P.
-                                </button>
+                                </a>
                             @endif
 
                             {{-- PROCESAR PAGO - En Proceso Pago → Pagada --}}
                             @if($cuentaCobro->estado == 'en_proceso_pago' && $user->tienePermiso('procesar-pago', $organizacionId))
-                                <button type="button" 
-                                        onclick="mostrarModalEstado('pagada', 'Confirmar Pago Ejecutado', 'green')"
-                                        class="bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
+                                <a href="{{ route('pagos.op.index') }}" 
+                                   class="bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all flex items-center">
                                     <i class="fas fa-money-check-alt mr-2"></i>
-                                    Confirmar Pago
-                                </button>
+                                    Procesar Pago
+                                </a>
                             @endif
                             
                             <button type="button" 

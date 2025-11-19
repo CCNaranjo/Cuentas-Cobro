@@ -123,9 +123,9 @@ class PermisosSeeder extends Seeder
             // ============================================
             // NOTIFICACIONES (modulo_id: 9)
             // ============================================
-            ['nombre' => 'Ver notificaciones', 'slug' => 'ver-notificaciones', 'descripcion' => 'Ver notificaciones del sistema', 'modulo_id' => 9, 'tipo' => 'lectura', 'es_organizacion' => true],
-            ['nombre' => 'Marcar notificaciones leídas', 'slug' => 'marcar-notificaciones-leidas', 'descripcion' => 'Marcar notificaciones como leídas', 'modulo_id' => 9, 'tipo' => 'accion', 'es_organizacion' => true],
-            ['nombre' => 'Eliminar notificaciones', 'slug' => 'eliminar-notificaciones', 'descripcion' => 'Eliminar notificaciones', 'modulo_id' => 9, 'tipo' => 'eliminacion', 'es_organizacion' => true],
+            ['nombre' => 'Ver notificaciones', 'slug' => 'ver-notificaciones', 'descripcion' => 'Ver notificaciones del sistema', 'modulo_id' => 10, 'tipo' => 'lectura', 'es_organizacion' => true],
+            ['nombre' => 'Marcar notificaciones leídas', 'slug' => 'marcar-notificaciones-leidas', 'descripcion' => 'Marcar notificaciones como leídas', 'modulo_id' => 10, 'tipo' => 'accion', 'es_organizacion' => true],
+            ['nombre' => 'Eliminar notificaciones', 'slug' => 'eliminar-notificaciones', 'descripcion' => 'Eliminar notificaciones', 'modulo_id' => 10, 'tipo' => 'eliminacion', 'es_organizacion' => true],
         ];
 
         foreach ($permisos as $permiso) {

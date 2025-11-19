@@ -43,7 +43,6 @@ Route::get('/verify-email/{token}', [AuthController::class, 'verifyEmail'])->nam
 
 // Rutas protegidas
 Route::middleware(['auth'])->group(function () {
-
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/', function () {
@@ -87,7 +86,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::post('/vincular-codigo', [OrganizacionController::class, 'vincularCodigo'])->name('vincular-codigo');
 
-    // ============================================
+   // ============================================
     // GESTIÓN DE USUARIOS
     // ============================================
     Route::middleware([VerificarAccesoOrganizacion::class, 'verificar.permiso:ver-usuarios'])
@@ -98,40 +97,69 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/asignar-rol', [UsuarioController::class, 'asignarRol'])
                 ->middleware(VerificarPermiso::class . ':asignar-rol-usuario')
                 ->name('usuarios.asignar-rol');
-            Route::post('/rechazar-vinculacion', [UsuarioController::class, 'rechazarVinculacion'])
-                ->middleware(VerificarPermiso::class . ':asignar-rol-usuario')
-                ->name('usuarios.rechazar-vinculacion');
-            Route::put('/cambiar-estado', [UsuarioController::class, 'cambiarEstado'])
+            Route::post('/{id}/rechazar', [UsuarioController::class, 'rechazarVinculacion'])->name('usuarios.rechazar');
+            Route::post('/{id}/cambiar-estado', [UsuarioController::class, 'cambiarEstado'])
                 ->middleware(VerificarPermiso::class . ':cambiar-estado-usuario')
                 ->name('usuarios.cambiar-estado');
-            Route::put('/cambiar-rol', [UsuarioController::class, 'cambiarRol'])
-                ->middleware(VerificarPermiso::class . ':asignar-rol-usuario')
+            Route::post('/{id}/cambiar-rol', [UsuarioController::class, 'cambiarRol'])
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
                 ->name('usuarios.cambiar-rol');
-            Route::get('/{usuario}', [UsuarioController::class, 'show'])
-                ->middleware('verificar.permiso:ver-usuarios')
-                ->name('usuarios.show');
+            Route::get('/{id}/edit', [UsuarioController::class, 'edit'])
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
+                ->name('usuarios.edit');
+            Route::put('/{id}', [UsuarioController::class, 'update'])
+                ->middleware(VerificarPermiso::class . ':editar-usuario')
+                ->name('usuarios.update');
+            Route::get('/{id}', [UsuarioController::class, 'show'])->name('usuarios.show');
         });
 
     // ============================================
-    // ROLES Y PERMISOS
+    // GESTIÓN DE ROLES Y PERMISOS
     // ============================================
-    Route::middleware(['verificar.acceso.organizacion', 'verificar.permiso:gestionar-roles'])
-        ->prefix('roles')
+    Route::middleware([VerificarPermiso::class . ':ver-roles'])
+        ->get('/roles', [RolesController::class, 'index'])
+        ->name('roles.index');
+
+    Route::middleware([VerificarPermiso::class . ':crear-rol'])
         ->group(function () {
-            Route::get('/', [RolesController::class, 'index'])->name('roles.index');
-            Route::get('/{rol}', [RolesController::class, 'show'])->name('roles.show');
-            Route::put('/{rol}', [RolesController::class, 'update'])->name('roles.update');
+            Route::get('/roles/create', [RolesController::class, 'create'])->name('roles.create');
+            Route::post('/roles', [RolesController::class, 'store'])->name('roles.store');
+        });
+
+    Route::middleware([VerificarPermiso::class . ':ver-roles'])
+        ->get('/roles/{rol}', [RolesController::class, 'show'])
+        ->name('roles.show');
+
+    Route::middleware([VerificarPermiso::class . ':asignar-permisos-rol'])
+        ->group(function () {
+            Route::get('/roles/{rol}/edit', [RolesController::class, 'edit'])->name('roles.edit');
+            Route::put('/roles/{rol}', [RolesController::class, 'update'])->name('roles.update');
+        });
+
+    Route::middleware([VerificarPermiso::class . ':gestionar-roles'])
+        ->delete('/roles/{rol}', [RolesController::class, 'destroy'])
+        ->name('roles.destroy');
+
+    Route::middleware([VerificarPermiso::class . ':ver-permisos'])
+        ->prefix('permisos')
+        ->group(function () {
+            Route::get('/', [RolesController::class, 'indexPermisos'])->name('permisos.index');
+            Route::post('/', [RolesController::class, 'storePermiso'])->name('permisos.store');
+            Route::put('/{permiso}', [RolesController::class, 'updatePermiso'])->name('permisos.update');
+            Route::delete('/{permiso}', [RolesController::class, 'destroyPermiso'])->name('permisos.destroy');
         });
 
     // ============================================
-    // GESTIÓN DE CONTRATOS
+    // CONTRATOS
     // ============================================
-    Route::middleware(['verificar.acceso.organizacion'])->prefix('contratos')->group(function () {
+    Route::middleware(['verificar.acceso.organizacion'])
+        ->prefix('contratos')
+        ->group(function () {
             Route::get('/', [ContratoController::class, 'index'])
-                ->middleware('verificar.permiso:ver-contratos')
+                ->middleware('verificar.acceso.contrato')
                 ->name('contratos.index');
-
-            Route::get('/create', [ContratoController::class, 'create'])
+            
+            Route::get('/crear', [ContratoController::class, 'create'])
                 ->middleware('verificar.permiso:crear-contrato')
                 ->name('contratos.create');
 
@@ -139,7 +167,23 @@ Route::middleware(['auth'])->group(function () {
                 ->middleware('verificar.permiso:crear-contrato')
                 ->name('contratos.store');
 
-            Route::get('/{contrato}/edit', [ContratoController::class, 'edit'])
+            Route::get('/buscar/contratista', [ContratoController::class, 'buscarContratista'])
+                ->middleware('verificar.permiso:vincular-contratista')
+                ->name('contratos.buscar-contratista');
+
+            Route::prefix('archivos')->group(function () {
+                Route::get('/{archivo}/descargar', [ContratoController::class, 'descargarArchivo'])
+                    ->name('contratos.archivos.descargar');
+                Route::delete('/{archivo}', [ContratoController::class, 'eliminarArchivo'])
+                    ->middleware('verificar.permiso:cargar-documentos')
+                    ->name('contratos.archivos.eliminar');
+            });
+
+            Route::post('/{contrato}/archivos', [ContratoController::class, 'subirArchivo'])
+                ->middleware('verificar.permiso:cargar-documentos')
+                ->name('contratos.archivos.subir');
+
+            Route::get('/{contrato}/editar', [ContratoController::class, 'edit'])
                 ->middleware('verificar.permiso:editar-contrato')
                 ->name('contratos.edit');
 
@@ -273,9 +317,9 @@ Route::middleware(['auth'])->group(function () {
         
         // REGISTRAR PAGO - Por tesorero
         Route::put('/{op}/pagar', [OrdenPagoController::class, 'registrarPago'])
-            ->middleware('verificar.permiso:registrar-pago-orden')
+            ->middleware('verificar.permiso:registrar-orden-pago')
             ->name('pagos.op.registrar-pago');
-
+    });
     // ============================================
     // NOTIFICACIONES
     // ============================================

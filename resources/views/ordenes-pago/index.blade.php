@@ -99,11 +99,12 @@
     </div>
 </div>
 
-<!-- Modal para Registrar Pago (ejemplo simple, ajusta con JS) -->
+<!-- Modal para Registrar Pago -->
 <div id="modalRegistrarPago" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <form action="" method="POST" id="formRegistrarPago">
             @csrf
+            @method('PUT')
             <h3 class="text-lg font-bold mb-4">Registrar Pago</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700">Fecha Pago Efectivo</label>

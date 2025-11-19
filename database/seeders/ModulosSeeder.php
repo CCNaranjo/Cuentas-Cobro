@@ -86,6 +86,14 @@ class ModulosSeeder extends Seeder
                 'orden' => 9,
                 'activo' => true,
                 'parent_id' => null],
+            [
+                'nombre' => 'Notificaciones',
+                'slug' => 'notificaciones',
+                'icono' => 'fa-bell',
+                'orden' => 10,
+                'activo' => true,
+                'parent_id' => null
+            ],
         ];
 
         foreach ($modulos as $modulo) {

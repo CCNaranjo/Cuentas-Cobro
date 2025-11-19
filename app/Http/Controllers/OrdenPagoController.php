@@ -10,6 +10,8 @@ use App\Models\OrdenPago;
 use App\Models\CuentaCobro;
 use App\Models\CuentaBancariaOrg;
 use App\Models\OpCuentaCobro;
+use App\Models\Usuario;
+use App\Models\Notificacion;
 
 class OrdenPagoController extends Controller
 {
@@ -75,10 +77,6 @@ class OrdenPagoController extends Controller
         $user = Auth::user();
         $organizacionId = session('organizacion_actual');
 
-        if (!$user->tienePermiso('crear-orden-pago', $organizacionId)) {
-            abort(403);
-        }
-
         $validated = $request->validate([
             'cuenta_origen_id' => 'required|exists:cuentas_bancarias_org,id,organizacion_id,' . $organizacionId,
             'cuentas_cobro' => 'required|array|min:1',
@@ -106,6 +104,24 @@ class OrdenPagoController extends Controller
                 OpCuentaCobro::create([
                     'orden_pago_id' => $ordenPago->id,
                     'cuenta_cobro_id' => $cuentaId,
+                ]);
+            }
+
+            // Notificar al ordenador del gasto
+            $ordenador = Usuario::whereHas('roles', function($q) use ($organizacionId) {
+                // Filtra la tabla 'roles' por el nombre
+                $q->where('nombre', 'ordenador_gasto');
+                $q->where('organizacion_id', $organizacionId);
+            })->first();
+
+            if ($ordenador) {
+                Notificacion::create([
+                    'usuario_id' => $ordenador->id,
+                    'tipo_notificacion' => 'orden_pago_creada',
+                    'titulo' => 'Nueva Orden de Pago Pendiente de Autorización',
+                    'mensaje' => 'Nueva orden de pago ' . $ordenPago->numero_op . ' pendiente de autorización',
+                    'cuenta_cobro_id' => $cuentaId,
+                    'generado_por_id' => $user->id,
                 ]);
             }
 
@@ -144,6 +160,7 @@ class OrdenPagoController extends Controller
         return view('ordenes-pago.show', compact('ordenPago'));
     }
 
+
     /**
      * Autorizar Orden de Pago (por Ordenador del Gasto)
      */
@@ -162,15 +179,30 @@ class OrdenPagoController extends Controller
             ->where('estado', 'creada')
             ->firstOrFail();
 
-        $ordenPago->update([
-            'aprobada_por_ordenador' => true,
-            'ordenador_id' => $user->id,
-            'estado' => 'autorizada',
-        ]);
+        DB::beginTransaction();
+        try {
+            $ordenPago->update([
+                'aprobada_por_ordenador' => true,
+                'ordenador_id' => $user->id,
+                'estado' => 'autorizada',
+            ]);
 
-        Log::info('Orden de pago autorizada', ['id' => $id, 'usuario_id' => $user->id]);
+            // Cambiar CC a 'en_proceso_pago'
+            foreach ($ordenPago->cuentasCobro as $cuentaCobro) {
+                $cuentaCobro->cambiarEstado('en_proceso_pago', $user->id, 'Orden de pago autorizada');
+            }
 
-        return back()->with('success', 'Orden de pago autorizada exitosamente');
+            DB::commit();
+
+            Log::info('Orden de pago autorizada', ['id' => $id, 'usuario_id' => $user->id]);
+
+            return back()->with('success', 'Orden de pago autorizada exitosamente');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al autorizar OP', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Error al autorizar');
+        }
     }
 
     /**
@@ -182,7 +214,7 @@ class OrdenPagoController extends Controller
         $user = Auth::user();
         $organizacionId = session('organizacion_actual');
 
-        if (!$user->tienePermiso('registrar-pago-orden', $organizacionId)) {
+        if (!$user->tienePermiso('registrar-orden-pago', $organizacionId)) {
             abort(403, 'No tienes permiso para registrar pagos');
         }
 
@@ -203,21 +235,16 @@ class OrdenPagoController extends Controller
 
             // Actualizar pivote y cuentas cobro
             foreach ($ordenPago->cuentasCobro as $cuentaCobro) {
-                $pivot = OpCuentaCobro::where('orden_pago_id', $id)
-                    ->where('cuenta_cobro_id', $cuentaCobro->id)
-                    ->first();
-
-                $pivot->update([
+                
+                // 💡 CAMBIO CRÍTICO: Usar el método updateExistingPivot()
+                // Esto actualiza la fila en la tabla 'op_cuentas_cobro'
+                $ordenPago->cuentasCobro()->updateExistingPivot($cuentaCobro->id, [
                     'fecha_pago_efectivo' => $validated['fecha_pago_efectivo'],
                     'comprobante_bancario_id' => $validated['comprobante_bancario_id'],
                 ]);
 
-                // Actualizar cuenta cobro a pagada
-                $cuentaCobro->update([
-                    'estado' => 'pagada',
-                    'fecha_pago_real' => $validated['fecha_pago_efectivo'],
-                    'numero_comprobante_pago' => $validated['comprobante_bancario_id'],
-                ]);
+                // Cambiar estado de CC a pagada usando método del model
+                $cuentaCobro->cambiarEstado('pagada', $user->id, 'Pago registrado via OP ' . $ordenPago->numero_op);
 
                 // Recalcular valor pagado en contrato
                 $cuentaCobro->contrato->recalcularValorPagado();
@@ -237,15 +264,28 @@ class OrdenPagoController extends Controller
     }
 
     /**
-     * Generar número único para OP
+     * Generar número único para OP usando bloqueo pesimista.
      */
     private function generarNumeroOp($organizacionId)
     {
+        // 1. Asegúrate de que estás en una transacción.
+        // (Esto ya lo estás haciendo en el controlador: DB::beginTransaction())
+        
+        // 2. Buscar el último número, pero bloquear esa fila hasta que la transacción termine.
         $ultimo = OrdenPago::where('organizacion_id', $organizacionId)
-            ->orderBy('id', 'desc')
+            ->whereYear('fecha_emision', date('Y')) // 💡 Recomendado: Reiniciar secuencia por año
+            ->orderBy('numero_op', 'desc')
+            ->lockForUpdate() // 🛑 BLOQUEA LA FILA
             ->first();
-
-        $secuencial = $ultimo ? (int)substr($ultimo->numero_op, -3) + 1 : 1;
+        
+        // 3. Extraer el secuencial (asumiendo formato 'OP-XXX-YYYY')
+        if ($ultimo) {
+            // Obtenemos los 3 dígitos (ej: '026')
+            $secuencialActual = (int) substr($ultimo->numero_op, 3, 3); 
+            $secuencial = $secuencialActual + 1;
+        } else {
+            $secuencial = 1;
+        }
 
         return 'OP-' . str_pad($secuencial, 3, '0', STR_PAD_LEFT) . '-' . date('Y');
     }
