@@ -89,11 +89,14 @@ class NotificacionController extends Controller
             $notificacion->marcarComoLeida();
         }
 
-        $cuentaCobroId = $notificacion->cuenta_cobro_id;
         $url = null;
 
-        // Determinar la URL según el tipo de notificación y estado
-        if ($notificacion->cuentaCobro) {
+        // Determinar la URL según el tipo de notificación
+        if ($notificacion->tipo_notificacion == 'orden_pago_creada') {
+            // Redirigir al index de pagos para aprobar
+            $url = route('pagos.op.index');
+        } elseif ($notificacion->cuentaCobro) {
+            $cuentaCobroId = $notificacion->cuenta_cobro_id;
             $estado = $notificacion->cuentaCobro->estado;
 
             // URLs según el estado y rol

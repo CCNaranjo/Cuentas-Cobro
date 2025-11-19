@@ -17,13 +17,17 @@ class DatabaseSeeder extends Seeder
             PermisosSeeder::class,
             RolesSeeder::class,
             AdminGlobalSeeder::class,
+            BancosSeeder::class,
             AlcaldiaEjemploSeeder::class,
             AdminOrganizacionSeeder::class,
             UsuariosOrganizacionSeeder::class,
             ContratoSeeder::class,
             CuentaCobroSeeder::class,
             ParametrosSistemaSeeder::class,
-            OrganizacionConfiguracionSeeder::class
+            OrganizacionConfiguracionSeeder::class,
+            DatosFinancierosContratistaSeeder::class,
+            CuentasBancariasOrgSeeder::class,
+            OrdenesPagoSeeder::class,
         ]);
     }
 }

@@ -80,20 +80,24 @@ class ModulosSeeder extends Seeder
                 'parent_id' => null
             ],
             [
+                'nombre' => 'Tesorería', 
+                'slug' => 'tesoreria', 
+                'icono' => 'fas fa-wallet', 
+                'orden' => 9,
+                'activo' => true,
+                'parent_id' => null],
+            [
                 'nombre' => 'Notificaciones',
                 'slug' => 'notificaciones',
                 'icono' => 'fa-bell',
-                'orden' => 9,
+                'orden' => 10,
                 'activo' => true,
                 'parent_id' => null
             ],
         ];
 
         foreach ($modulos as $modulo) {
-            Modulo::updateOrCreate(
-                ['slug' => $modulo['slug']],
-                $modulo
-            );
+            Modulo::create($modulo);
         }
 
         $this->command->info('✓ Módulos creados correctamente');

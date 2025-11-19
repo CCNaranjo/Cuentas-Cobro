@@ -100,6 +100,13 @@ class PermisosSeeder extends Seeder
             ['nombre' => 'Exportar reportes', 'slug' => 'exportar-reportes', 'descripcion' => 'Descargar reportes', 'modulo_id' => 7, 'tipo' => 'accion', 'es_organizacion' => true],
             ['nombre' => 'Ver reportes de contratos', 'slug' => 'ver-reportes-contratos', 'descripcion' => 'Ver informes de contratos', 'modulo_id' => 7, 'tipo' => 'lectura', 'es_organizacion' => true],
             
+            // NUEVOS PERMISOS PARA TESORERÍA (modulo_id: 9 - asumiendo el nuevo módulo)
+            ['nombre' => 'Ver órdenes de pago', 'slug' => 'ver-ordenes-pago', 'descripcion' => 'Listar órdenes de pago de la organización', 'modulo_id' => 9, 'tipo' => 'lectura', 'es_organizacion' => true],
+            ['nombre' => 'Crear orden de pago', 'slug' => 'crear-orden-pago', 'descripcion' => 'Crear nuevas órdenes de pago', 'modulo_id' => 9, 'tipo' => 'escritura', 'es_organizacion' => true],
+            ['nombre' => 'Aprobar orden de pago', 'slug' => 'aprobar-orden-pago', 'descripcion' => 'Autorizar órdenes de pago', 'modulo_id' => 9, 'tipo' => 'accion', 'es_organizacion' => true],
+            ['nombre' => 'Registrar orden de pago', 'slug' => 'registrar-orden-pago', 'descripcion' => 'Registrar pagos ejecutados en órdenes', 'modulo_id' => 9, 'tipo' => 'accion', 'es_organizacion' => true],
+            ['nombre' => 'Anular orden de pago', 'slug' => 'anular-orden-pago', 'descripcion' => 'Anular órdenes de pago', 'modulo_id' => 9, 'tipo' => 'eliminacion', 'es_organizacion' => true],
+
             // ============================================
             // OTROS (modulo_id: 8)
             // ============================================
@@ -116,9 +123,9 @@ class PermisosSeeder extends Seeder
             // ============================================
             // NOTIFICACIONES (modulo_id: 9)
             // ============================================
-            ['nombre' => 'Ver notificaciones', 'slug' => 'ver-notificaciones', 'descripcion' => 'Ver notificaciones del sistema', 'modulo_id' => 9, 'tipo' => 'lectura', 'es_organizacion' => true],
-            ['nombre' => 'Marcar notificaciones leídas', 'slug' => 'marcar-notificaciones-leidas', 'descripcion' => 'Marcar notificaciones como leídas', 'modulo_id' => 9, 'tipo' => 'accion', 'es_organizacion' => true],
-            ['nombre' => 'Eliminar notificaciones', 'slug' => 'eliminar-notificaciones', 'descripcion' => 'Eliminar notificaciones', 'modulo_id' => 9, 'tipo' => 'eliminacion', 'es_organizacion' => true],
+            ['nombre' => 'Ver notificaciones', 'slug' => 'ver-notificaciones', 'descripcion' => 'Ver notificaciones del sistema', 'modulo_id' => 10, 'tipo' => 'lectura', 'es_organizacion' => true],
+            ['nombre' => 'Marcar notificaciones leídas', 'slug' => 'marcar-notificaciones-leidas', 'descripcion' => 'Marcar notificaciones como leídas', 'modulo_id' => 10, 'tipo' => 'accion', 'es_organizacion' => true],
+            ['nombre' => 'Eliminar notificaciones', 'slug' => 'eliminar-notificaciones', 'descripcion' => 'Eliminar notificaciones', 'modulo_id' => 10, 'tipo' => 'eliminacion', 'es_organizacion' => true],
         ];
 
         foreach ($permisos as $permiso) {

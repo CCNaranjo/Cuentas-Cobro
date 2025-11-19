@@ -8,7 +8,7 @@
 
     <div class="flex-1 flex flex-col overflow-hidden">
         @include('partials.header')
-        <div class="container mx-auto px-4 py-8">
+        <div class="container mx-auto px-4 py-8 overflow-auto">
             <!-- Header -->
             <div class="mb-6">
                 <div class="flex items-center justify-between">
@@ -54,6 +54,11 @@
                             <i class="bi bi-palette mr-2"></i>
                             Branding
                         </a>
+                        <a href="?tab=cuentas_bancarias" 
+                        class="py-4 px-1 border-b-2 font-medium text-sm transition {{ $tab === 'cuentas_bancarias' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                            <i class="fas fa-bank mr-2"></i>
+                            Cuentas Bancarias
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -72,7 +77,6 @@
                     <form action="{{ route('configuracion.actualizar-organizacion') }}" method="POST" class="space-y-6">
                         @csrf
                         <input type="hidden" name="seccion" value="general">
-                        
                         <!-- Información Básica -->
                         <div class="bg-gray-50 rounded-lg p-6">
                             <h4 class="font-semibold text-gray-700 mb-4">Datos de Contacto</h4>
@@ -121,83 +125,19 @@
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                                         required>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Vigencia Fiscal -->
-                        <div class="bg-gray-50 rounded-lg p-6">
-                            <h4 class="font-semibold text-gray-700 mb-4 flex items-center">
-                                <i class="bi bi-calendar-event mr-2"></i>
-                                Vigencia Fiscal
-                            </h4>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        NIT Organización
-                                    </label>
-                                    <input type="text" 
-                                        name="nit_organizacion" 
-                                        value="{{ old('nit_organizacion', $configuracionOrg->nit_organizacion ?? $organizacion->nit) }}"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Vigencia Fiscal -->
-                        <div class="bg-gray-50 rounded-lg p-6">
-                            <h4 class="font-semibold text-gray-700 mb-4 flex items-center">
-                                <i class="bi bi-calendar-event mr-2"></i>
-                                Vigencia Fiscal
-                            </h4>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha de Inicio <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="date" 
-                                        name="vigencia_fiscal_fecha_inicio" 
-                                        value="{{ old('vigencia_fiscal_fecha_inicio', $configuracionOrg->vigencia_fiscal_fecha_inicio?->format('Y-m-d') ?? date('Y') . '-01-01') }}"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
-                                        required>
-                                </div>
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha de Fin <span class="text-red-500">*</span>
+                                        Vigencia Fiscal <span class="text-red-500">*</span>
                                     </label>
-                                    <input type="date" 
-                                        name="vigencia_fiscal_fecha_fin" 
-                                        value="{{ old('vigencia_fiscal_fecha_fin', $configuracionOrg->vigencia_fiscal_fecha_fin?->format('Y-m-d') ?? date('Y') . '-12-31') }}"
+                                    <input type="number" 
+                                        name="vigencia_fiscal" 
+                                        value="{{ old('vigencia_fiscal', $configuracionOrg->vigencia_fiscal ?? date('Y')) }}"
+                                        min="2020" max="2099"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                                         required>
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-500 mt-2">Define el período fiscal activo para contratos y pagos</p>
-                        </div>
-                        
-                        <!-- Información de Ubicación (Solo lectura) -->
-                        <div class="bg-blue-50 rounded-lg p-6">
-                            <h4 class="font-semibold text-gray-700 mb-4">Ubicación Geográfica</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <span class="text-gray-500">Departamento:</span>
-                                    <p class="font-semibold text-gray-800">{{ $organizacion->departamento }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500">Municipio:</span>
-                                    <p class="font-semibold text-gray-800">{{ $organizacion->municipio }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-gray-500">NIT:</span>
-                                    <p class="font-semibold text-gray-800">{{ $organizacion->nit }}</p>
-                                </div>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-3">
-                                <i class="bi bi-lock-fill mr-1"></i>
-                                Estos campos son de solo lectura. Contacta al administrador global para modificarlos.
-                            </p>
                         </div>
                         
                         <!-- Botón de Guardar -->
@@ -216,86 +156,43 @@
                 <!-- TAB: PARÁMETROS FINANCIEROS -->
                 <div>
                     <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                        <i class="bi bi-calculator mr-2 text-primary"></i>
-                        Configuración Financiera Local
+                        <i class="bi bi-currency-dollar mr-2 text-primary"></i>
+                        Parámetros Financieros
                     </h3>
-                    
-                    <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 mb-6 flex items-start">
-                        <i class="bi bi-exclamation-triangle text-yellow-600 text-xl mr-3"></i>
-                        <div class="text-sm text-yellow-700">
-                            <strong>Importante:</strong> Estos parámetros afectan el cálculo de retenciones y pagos. Verifica con el área financiera antes de modificar.
-                        </div>
-                    </div>
                     
                     <form action="{{ route('configuracion.actualizar-organizacion') }}" method="POST" class="space-y-6">
                         @csrf
                         <input type="hidden" name="seccion" value="financiero">
                         
-                        <!-- Tasas de Retención -->
+                        <!-- Parámetros Principales -->
                         <div class="bg-gray-50 rounded-lg p-6">
-                            <h4 class="font-semibold text-gray-700 mb-4 flex items-center">
-                                <i class="bi bi-percent mr-2"></i>
-                                Tasas de Retención
-                            </h4>
+                            <h4 class="font-semibold text-gray-700 mb-4">Retenciones y Plazos</h4>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Retención ICA (%) <span class="text-red-500">*</span>
+                                        Porcentaje Retención ICA (%) <span class="text-red-500">*</span>
                                     </label>
-                                    <div class="relative">
-                                        <input type="number" 
-                                            name="porcentaje_retencion_ica" 
-                                            value="{{ old('porcentaje_retencion_ica', $configuracionOrg->porcentaje_retencion_ica) }}"
-                                            step="0.001"
-                                            min="0"
-                                            max="100"
-                                            class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
-                                            required>
-                                        <span class="absolute right-3 top-2.5 text-gray-500">%</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">Porcentaje de retención de Industria y Comercio</p>
+                                    <input type="number" 
+                                        name="porcentaje_retencion_ica" 
+                                        value="{{ old('porcentaje_retencion_ica', $configuracionOrg->porcentaje_retencion_ica) }}"
+                                        step="0.001" min="0" max="100"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
+                                        required>
                                 </div>
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Retención en la Fuente (%) <span class="text-red-500">*</span>
+                                        Porcentaje Retención en la Fuente (%) <span class="text-red-500">*</span>
                                     </label>
-                                    <div class="relative">
-                                        <input type="number" 
-                                            name="porcentaje_retencion_fuente" 
-                                            value="{{ old('porcentaje_retencion_fuente', $configuracionOrg->porcentaje_retencion_fuente) }}"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
-                                            required>
-                                        <span class="absolute right-3 top-2.5 text-gray-500">%</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">Porcentaje de retención en la fuente aplicable</p>
+                                    <input type="number" 
+                                        name="porcentaje_retencion_fuente" 
+                                        value="{{ old('porcentaje_retencion_fuente', $configuracionOrg->porcentaje_retencion_fuente) }}"
+                                        step="0.001" min="0" max="100"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
+                                        required>
                                 </div>
-                            </div>
-                            
-                            <!-- Ejemplo de Cálculo -->
-                            <div class="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-                                <h5 class="text-sm font-semibold text-gray-700 mb-2">Ejemplo de Cálculo</h5>
-                                <div class="text-xs text-gray-600 space-y-1">
-                                    <p>Valor Bruto del Contrato: <span class="font-semibold">$10,000,000</span></p>
-                                    <p>Retención ICA ({{ $configuracionOrg->porcentaje_retencion_ica }}%): <span class="text-red-600 font-semibold">-${{ number_format(10000000 * $configuracionOrg->porcentaje_retencion_ica / 100, 0, ',', '.') }}</span></p>
-                                    <p>Retención Fuente ({{ $configuracionOrg->porcentaje_retencion_fuente }}%): <span class="text-red-600 font-semibold">-${{ number_format(10000000 * $configuracionOrg->porcentaje_retencion_fuente / 100, 0, ',', '.') }}</span></p>
-                                    <p class="border-t border-gray-200 pt-1 mt-1">Valor Neto a Pagar: <span class="text-green-600 font-bold">${{ number_format(10000000 - (10000000 * $configuracionOrg->porcentaje_retencion_ica / 100) - (10000000 * $configuracionOrg->porcentaje_retencion_fuente / 100), 0, ',', '.') }}</span></p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Plazos de Pago -->
-                        <div class="bg-gray-50 rounded-lg p-6">
-                            <h4 class="font-semibold text-gray-700 mb-4 flex items-center">
-                                <i class="bi bi-clock-history mr-2"></i>
-                                Plazos de Pago
-                            </h4>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                         Días de Plazo para Pago <span class="text-red-500">*</span>
@@ -303,25 +200,24 @@
                                     <input type="number" 
                                         name="dias_plazo_pago" 
                                         value="{{ old('dias_plazo_pago', $configuracionOrg->dias_plazo_pago) }}"
-                                        min="1"
-                                        max="365"
+                                        min="1" max="365"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                                         required>
-                                    <p class="text-xs text-gray-500 mt-1">Días hábiles desde la radicación de la cuenta de cobro</p>
                                 </div>
                                 
-                                <div class="flex items-center">
-                                    <label class="flex items-start cursor-pointer">
-                                        <input type="checkbox" 
-                                            name="requiere_paz_y_salvo" 
-                                            value="1"
-                                            {{ old('requiere_paz_y_salvo', $configuracionOrg->requiere_paz_y_salvo) ? 'checked' : '' }}
-                                            class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mt-0.5">
-                                        <div class="ml-3">
-                                            <span class="text-sm font-medium text-gray-700">Requiere Paz y Salvo</span>
-                                            <p class="text-xs text-gray-500">Exigir paz y salvo antes de aprobar cuentas</p>
-                                        </div>
+                                <div class="md:col-span-2 flex items-center space-x-3 bg-blue-50 p-4 rounded-lg">
+                                    <input type="checkbox" 
+                                           id="requiere_paz_y_salvo" 
+                                           name="requiere_paz_y_salvo" 
+                                           {{ old('requiere_paz_y_salvo', $configuracionOrg->requiere_paz_y_salvo) ? 'checked' : '' }}
+                                           class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary">
+                                    <label for="requiere_paz_y_salvo" class="text-sm text-gray-700 font-medium">
+                                        Requerir Paz y Salvo para Contratistas
                                     </label>
+                                    <div class="text-xs text-blue-600 flex items-center">
+                                        <i class="bi bi-info-circle mr-1"></i>
+                                        Obligatorio para radicación de cuentas
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -424,6 +320,123 @@
                             </button>
                         </div>
                     </form>
+                </div>
+                @endif
+                
+                @if($tab === 'cuentas_bancarias')
+                <!-- TAB: CUENTAS BANCARIAS -->
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-bank mr-2 text-primary"></i>
+                        Cuentas Bancarias
+                    </h3>
+                    
+                    <!-- Formulario para añadir nueva cuenta -->
+                    <form action="{{ route('configuracion.actualizar-organizacion') }}" method="POST" class="bg-gray-50 rounded-lg p-6 mb-6">
+                        @csrf
+                        <input type="hidden" name="seccion" value="cuentas_bancarias">
+                        
+                        <h4 class="font-semibold text-gray-700 mb-4">Añadir Nueva Cuenta</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Banco <span class="text-red-500">*</span>
+                                </label>
+                                <select name="banco_id" required class="w-full px-4 py-2 border rounded-lg">
+                                    <option value="">Seleccione banco</option>
+                                    @foreach($bancos as $banco)
+                                        <option value="{{ $banco->id }}">{{ $banco->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Número de Cuenta <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" name="numero_cuenta" required class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Tipo de Cuenta <span class="text-red-500">*</span>
+                                </label>
+                                <select name="tipo_cuenta" required class="w-full px-4 py-2 border rounded-lg">
+                                    <option value="">Seleccione tipo</option>
+                                    <option value="ahorros">Ahorros</option>
+                                    <option value="corriente">Corriente</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Titular de la Cuenta <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" name="titular_cuenta" required class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                            
+                            <div class="md:col-span-2 flex items-center space-x-3">
+                                <input type="checkbox" name="activa" id="activa" checked class="w-5 h-5 text-primary border-gray-300 rounded">
+                                <label for="activa" class="text-sm text-gray-700">Cuenta Activa</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button type="submit" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark flex items-center">
+                                <i class="fas fa-plus mr-2"></i> Añadir Cuenta
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Lista de Cuentas Existentes -->
+                    <div class="bg-white rounded-lg">
+                        <h4 class="font-semibold text-gray-700 mb-4 p-6 border-b">Cuentas Registradas</h4>
+                        
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Banco</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Número</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titular</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                @foreach($cuentasBancarias as $cuenta)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 text-sm">{{ $cuenta->banco->nombre }}</td>
+                                        <td class="px-6 py-4 text-sm">{{ $cuenta->numero_cuenta }}</td>
+                                        <td class="px-6 py-4 text-sm">{{ ucfirst($cuenta->tipo_cuenta) }}</td>
+                                        <td class="px-6 py-4 text-sm">{{ $cuenta->titular_cuenta }}</td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-3 py-1 rounded-full text-xs font-semibold 
+                                                {{ $cuenta->activa ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                {{ $cuenta->activa ? 'Activa' : 'Inactiva' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <button class="text-blue-600 hover:text-blue-900 mr-3">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="text-red-600 hover:text-red-900">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        
+                        @if($cuentasBancarias->isEmpty())
+                            <div class="text-center py-8 text-gray-500">
+                                <i class="fas fa-bank text-4xl mb-2"></i>
+                                <p>No hay cuentas registradas aún</p>
+                            </div>
+                        @endif
+                    </div>
                 </div>
                 @endif
                 

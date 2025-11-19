@@ -20,6 +20,8 @@ class CuentaCobro extends Model
         'valor_bruto',
         'retenciones_calculadas',
         'valor_neto',
+        'numero_comprobante_pago',
+        'fecha_pago_real',
         'pila_verificada',
         'estado',
         'observaciones',
@@ -43,7 +45,7 @@ class CuentaCobro extends Model
     public function contrato() { return $this->belongsTo(Contrato::class); }
     public function creador() { return $this->belongsTo(Usuario::class, 'created_by'); }
     public function items() { return $this->hasMany(ItemCuentaCobro::class, 'cuenta_cobro_id'); }
-    public function documentos() { return $this->hasMany(DocumentoSoporte::class, 'cuenta_cobro_id'); }
+    public function archivos() { return $this->hasMany(CuentaCobroArchivo::class, 'cuenta_cobro_id'); }
     public function historial() { return $this->hasMany(HistorialEstado::class, 'cuenta_cobro_id')->orderByDesc('created_at'); }
 
     // === ESTADOS Y COLORES ===
@@ -131,6 +133,13 @@ class CuentaCobro extends Model
         ));
 
         return true;
+    }
+
+    public function ordenesPago()
+    {
+        return $this->belongsToMany(OrdenPago::class, 'op_cuentas_cobro')
+                    ->withPivot('fecha_pago_efectivo', 'comprobante_bancario_id')
+                    ->withTimestamps();
     }
 
     // Scopes útiles

@@ -52,6 +52,29 @@ return new class () extends Migration {
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
+
+        Schema::create('bancos', function (Blueprint $table) {
+            $table->id();
+            $table->string('nombre')->unique();
+            $table->string('codigo_ach')->nullable(); // Para referencia de pago
+            $table->timestamps();
+        });
+
+        Schema::create('datos_financieros_contratista', function (Blueprint $table) {
+            $table->foreignId('usuario_id')->primary()->constrained('usuarios')->onDelete('cascade');
+            $table->string('cedula_o_nit_verificado')->unique(); // Para trazabilidad legal
+            
+            // Información de la cuenta destino
+            $table->foreignId('banco_id')->nullable()->constrained('bancos')->onDelete('set null');
+            $table->enum('tipo_cuenta', ['ahorros', 'corriente'])->nullable();
+            $table->string('numero_cuenta_bancaria')->nullable();
+            
+            // Estado de la documentación (para bloquear la radicación de la CC)
+            $table->boolean('documentacion_completa')->default(false);
+            $table->boolean('verificado_tesoreria')->default(false);
+            
+            $table->timestamps();
+        });
     }
 
     /**
@@ -59,8 +82,10 @@ return new class () extends Migration {
      */
     public function down(): void
     {
+        Schema::dropIfExists('bancos');
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('datos_financieros_contratista');
     }
 };

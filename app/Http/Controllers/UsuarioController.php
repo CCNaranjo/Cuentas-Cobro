@@ -7,6 +7,7 @@ use App\Models\VinculacionPendiente;
 use App\Models\Rol;
 use App\Models\Organizacion;
 use App\Models\UsuarioOrganizacionRol;
+use App\Models\Banco;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -442,10 +443,14 @@ class UsuarioController extends Controller
             'organizacionesVinculadas',
             'roles',
             'contratosComoContratista',
-            'contratosComoSupervisor'
+            'contratosComoSupervisor',
+            'datosFinancierosContratista.banco'  // Añadido para datos financieros si es contratista
         ])->findOrFail($user->id);
 
-        return view('usuarios.perfil', compact('usuario'));
+        // Obtener bancos para formulario si es contratista
+        $bancos = Banco::all();
+
+        return view('usuarios.perfil', compact('usuario', 'bancos'));
     }
 
     /**
@@ -469,6 +474,22 @@ class UsuarioController extends Controller
         ]);
 
         $user->update($validated);
+
+        // Si es contratista, actualizar datos financieros
+        if ($user->tieneRol('contratista')) {
+            $validatedFinanciero = $request->validate([
+                'cedula_o_nit_verificado' => 'required|string|max:50|unique:datos_financieros_contratista,cedula_o_nit_verificado,' . $user->datosFinancierosContratista?->id,
+                'banco_id' => 'nullable|exists:bancos,id',
+                'tipo_cuenta' => 'nullable|in:ahorros,corriente',
+                'numero_cuenta_bancaria' => 'nullable|string|max:50',
+            ]);
+
+            if ($user->datosFinancierosContratista) {
+                $user->datosFinancierosContratista->update($validatedFinanciero);
+            } else {
+                $user->datosFinancierosContratista()->create($validatedFinanciero);
+            }
+        }
 
         Log::info('Usuario actualizó su perfil', [
             'usuario_id' => $user->id,
@@ -526,5 +547,4 @@ class UsuarioController extends Controller
 
         return back()->with('success', 'Preferencias de notificaciones actualizadas');
     }
-
 }

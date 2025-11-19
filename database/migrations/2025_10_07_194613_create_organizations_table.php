@@ -71,6 +71,17 @@ return new class () extends Migration {
             $table->index(['organizacion_id', 'estado']);
             $table->index('contratista_id');
         });
+        
+        Schema::create('cuentas_bancarias_org', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('organizacion_id')->constrained('organizaciones')->onDelete('cascade');
+            $table->foreignId('banco_id')->constrained('bancos');
+            $table->string('numero_cuenta')->unique();
+            $table->enum('tipo_cuenta', ['ahorros', 'corriente']);
+            $table->string('titular_cuenta');
+            $table->boolean('activa')->default(true);
+            $table->timestamps();
+        });
     }
 
     /**
@@ -81,5 +92,6 @@ return new class () extends Migration {
         Schema::dropIfExists('organizaciones');
         Schema::dropIfExists('vinculaciones_pendientes');
         Schema::dropIfExists('contratos');
+        Schema::dropIfExists('cuentas_bancarias_org');
     }
 };

@@ -23,6 +23,8 @@ return new class extends Migration
                 'cuenta_cobro_aprobada',
                 'cuenta_cobro_rechazada',
                 'cuenta_cobro_requiere_correccion',
+                'orden_pago_creada',
+                'orden_pago_autorizada',
                 'cuenta_cobro_en_proceso_pago',
                 'cuenta_cobro_pagada',
                 'cuenta_cobro_anulada',

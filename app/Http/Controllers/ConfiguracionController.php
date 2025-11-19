@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Organizacion;
 use App\Models\ConfiguracionGlobal;
 use App\Models\OrganizacionConfiguracion;
+use App\Models\CuentaBancariaOrg;
+use App\Models\Banco;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -180,7 +182,7 @@ class ConfiguracionController extends Controller
         return back()->with('success', 'Plantilla de email actualizada exitosamente');
     }
 
-    /**
+   /**
      * Configuración de Organización (Admin Organización)
      */
     public function organizacion(Request $request)
@@ -217,7 +219,11 @@ class ConfiguracionController extends Controller
             'habilitar_aprobacion_multiple' => false,
         ]);
 
-        return view('configuracion.organizacion', compact('organizacion', 'configuracionOrg', 'tab'));
+        // Añadido: Obtener cuentas bancarias y bancos para tab de pagos
+        $cuentasBancarias = CuentaBancariaOrg::where('organizacion_id', $organizacionId)->with('banco')->get();
+        $bancos = Banco::all();
+
+        return view('configuracion.organizacion', compact('organizacion', 'configuracionOrg', 'tab', 'cuentasBancarias', 'bancos'));
     }
 
     /**
@@ -243,6 +249,8 @@ class ConfiguracionController extends Controller
                 return $this->actualizarParametrosFinancieros($request, $organizacionId);
             case 'branding':
                 return $this->actualizarBranding($request, $organizacionId);
+            case 'cuentas_bancarias':
+                return $this->actualizarCuentasBancarias($request, $organizacionId);
             default:
                 return back()->withErrors(['error' => 'Sección no válida']);
         }
@@ -318,6 +326,30 @@ class ConfiguracionController extends Controller
         $organizacion->update(['logo_path' => $path]);
 
         return back()->with('success', 'Logo actualizado exitosamente');
+    }
+
+    /**
+     * Actualizar cuentas bancarias (nueva sección para pagos)
+     */
+    private function actualizarCuentasBancarias(Request $request, $organizacionId)
+    {
+        $validated = $request->validate([
+            'banco_id' => 'required|exists:bancos,id',
+            'numero_cuenta' => 'required|string|max:50|unique:cuentas_bancarias_org,numero_cuenta',
+            'tipo_cuenta' => 'required|in:ahorros,corriente',
+            'titular_cuenta' => 'required|string|max:255',
+            'activa' => 'boolean',
+        ]);
+
+        CuentaBancariaOrg::create(array_merge($validated, ['organizacion_id' => $organizacionId]));
+
+        Log::info('Cuenta bancaria añadida', [
+            'organizacion_id' => $organizacionId,
+            'usuario_id' => Auth::id(),
+            'datos' => $validated
+        ]);
+
+        return back()->with('success', 'Cuenta bancaria añadida exitosamente');
     }
 
     /**
