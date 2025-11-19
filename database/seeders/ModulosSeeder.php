@@ -79,10 +79,21 @@ class ModulosSeeder extends Seeder
                 'activo' => true,
                 'parent_id' => null
             ],
+            [
+                'nombre' => 'Notificaciones',
+                'slug' => 'notificaciones',
+                'icono' => 'fa-bell',
+                'orden' => 9,
+                'activo' => true,
+                'parent_id' => null
+            ],
         ];
 
         foreach ($modulos as $modulo) {
-            Modulo::create($modulo);
+            Modulo::updateOrCreate(
+                ['slug' => $modulo['slug']],
+                $modulo
+            );
         }
 
         $this->command->info('✓ Módulos creados correctamente');
