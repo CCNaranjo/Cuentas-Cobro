@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\CuentaCobro;
+use App\Models\CuentaCobroArchivo;
 use App\Models\Contrato;
 use App\Models\ItemCuentaCobro;
-use App\Models\DocumentoSoporte;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -31,12 +31,12 @@ class CuentaCobroController extends Controller
         // ========================================
         if ($user->tienePermiso('ver-todas-cuentas', $organizacionId)) {
             // Admin Organización, Ordenador Gasto, Supervisor, Tesorero, Revisor Contratación
-            $query->whereHas('contrato', function($q) use ($organizacionId) {
+            $query->whereHas('contrato', function ($q) use ($organizacionId) {
                 $q->where('organizacion_id', $organizacionId);
             });
         } elseif ($user->tienePermiso('ver-mis-cuentas', $organizacionId)) {
             // Contratista - Solo sus cuentas
-            $query->whereHas('contrato', function($q) use ($user) {
+            $query->whereHas('contrato', function ($q) use ($user) {
                 $q->where('contratista_id', $user->id);
             });
         } else {
@@ -57,21 +57,21 @@ class CuentaCobroController extends Controller
                         $query->whereIn('estado', ['radicada', 'en_correccion_supervisor']);
                     }
                     break;
-                
+
                 case 'revisor_contratacion':
                     // Ver solo certificadas por supervisor o en corrección de contratación
                     if (!$request->has('estado')) {
                         $query->whereIn('estado', ['certificado_supervisor', 'en_correccion_contratacion']);
                     }
                     break;
-                
+
                 case 'tesorero':
                     // Ver verificadas de contratación, aprobadas y en proceso de pago
                     if (!$request->has('estado')) {
                         $query->whereIn('estado', ['verificado_contratacion', 'aprobada_ordenador', 'en_proceso_pago', 'pagada']);
                     }
                     break;
-                
+
                 case 'ordenador_gasto':
                     // Ver solo verificadas de presupuesto
                     if (!$request->has('estado')) {
@@ -98,8 +98,8 @@ class CuentaCobroController extends Controller
             $buscar = $request->buscar;
             $query->where(function($q) use ($buscar) {
                 $q->where('numero_cuenta_cobro', 'like', "%{$buscar}%")
-                  ->orWhere('periodo_inicio', 'like', "%{$buscar}%")
-                  ->orWhere('periodo_fin', 'like', "%{$buscar}%");
+                    ->orWhere('periodo_inicio', 'like', "%{$buscar}%")
+                    ->orWhere('periodo_fin', 'like', "%{$buscar}%");
             });
         }
 
@@ -132,7 +132,13 @@ class CuentaCobroController extends Controller
                 ->get();
         }
 
-        return view('cuentas_cobro.create', compact('contratos'));
+        // Pre-seleccionar contrato si viene por parámetro
+        $contratoSeleccionado = null;
+        if ($request->has('contrato_id')) {
+            $contratoSeleccionado = $contratos->where('id', $request->contrato_id)->first();
+        }
+
+        return view('cuentas_cobro.create', compact('contratos', 'contratoSeleccionado'));
     }
 
     /**
@@ -155,6 +161,10 @@ class CuentaCobroController extends Controller
             'items.*.cantidad' => 'required|numeric|min:0',
             'items.*.valor_unitario' => 'required|numeric|min:0',
             'items.*.porcentaje_avance' => 'nullable|numeric|min:0|max:100',
+            'archivos' => 'nullable|array',
+            'archivos.*.archivo' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+            'archivos.*.tipo_documento' => 'required|in:cuenta_cobro,acta_recibido,informe,foto_evidencia,planilla,soporte_pago,factura,otro',
+            'archivos.*.descripcion' => 'nullable|string',
         ]);
 
         $contrato = Contrato::findOrFail($validated['contrato_id']);
@@ -178,10 +188,10 @@ class CuentaCobroController extends Controller
                 'created_by' => $user->id,
             ]);
 
+            // Crear items
             $valorBruto = 0;
-
-            foreach ($validated['items'] as $item) {
-                $itemCobro = ItemCuentaCobro::create([
+            foreach ($validated['items'] as $itemData) {
+                $item = ItemCuentaCobro::create([
                     'cuenta_cobro_id' => $cuentaCobro->id,
                     'descripcion' => $item['descripcion'],
                     'cantidad' => $item['cantidad'],
@@ -189,33 +199,166 @@ class CuentaCobroController extends Controller
                     'porcentaje_avance' => $item['porcentaje_avance'] ?? 0,
                 ]);
 
-                $valorBruto += $item['cantidad'] * $item['valor_unitario'];
+                // Calcular valor bruto acumulado
+                $valorBruto += $itemData['cantidad'] * $itemData['valor_unitario'];
             }
 
-            $retencionFuente = $valorBruto * ($contrato->porcentaje_retencion_fuente / 100);
-            $estampilla = $valorBruto * ($contrato->porcentaje_estampilla / 100);
-            $valorNeto = $valorBruto - $retencionFuente - $estampilla;
+            // Actualizar valor bruto
+            $cuentaCobro->update(['valor_bruto' => $valorBruto]);
 
-            $cuentaCobro->update([
-                'valor_bruto' => $valorBruto,
-                'valor_neto' => $valorNeto,
-                'retencion_fuente' => $retencionFuente,
-                'estampilla' => $estampilla,
-            ]);
+            // Calcular retenciones
+            $cuentaCobro->fresh()->calcularRetenciones();
+
+            // Procesar archivos adjuntos
+            if ($request->has('archivos')) {
+                Log::info('Procesando archivos adjuntos', [
+                    'count' => count($request->archivos),
+                    'cuenta_cobro_id' => $cuentaCobro->id
+                ]);
+
+                foreach ($request->archivos as $index => $archivoData) {
+                    try {
+                        $archivo = $archivoData['archivo'];
+                        $nombreOriginal = $archivo->getClientOriginalName();
+                        $extension = $archivo->getClientOriginalExtension();
+
+                        // Formatear el nombre del archivo
+                        $numeroCuenta = $cuentaCobro->numero_cuenta_cobro;
+                        $tipoDocumento = $archivoData['tipo_documento'];
+                        $timestamp = time();
+                        $indice = $index;
+
+                        $nombreArchivo = "{$numeroCuenta}_{$tipoDocumento}_{$timestamp}_{$indice}.{$extension}";
+
+                        // Crear directorio
+                        $directorio = 'cuentas_cobro/' . $cuentaCobro->id;
+                        $ruta = $directorio . '/' . $nombreArchivo;
+
+                        Log::info('Subiendo archivo a FTP', [
+                            'ruta' => $ruta,
+                            'nombre_archivo' => $nombreArchivo,
+                            'tamaño' => $archivo->getSize(),
+                            'cuenta_cobro_id' => $cuentaCobro->id
+                        ]);
+
+                        // Verificar configuración FTP
+                        if (!Storage::disk('ftp')) {
+                            throw new \Exception('Disco FTP no configurado correctamente');
+                        }
+
+                        // Crear directorio si no existe
+                        if (!Storage::disk('ftp')->exists($directorio)) {
+                            Storage::disk('ftp')->makeDirectory($directorio);
+                        }
+
+                        // Subir archivo al FTP
+                        $subido = Storage::disk('ftp')->put($ruta, fopen($archivo->getRealPath(), 'r+'));
+
+                        if (!$subido) {
+                            throw new \Exception('No se pudo subir el archivo al FTP');
+                        }
+
+                        Log::info('Archivo subido exitosamente al FTP', ['ruta' => $ruta]);
+
+                        // Crear registro en cuenta_cobro_archivos
+                        CuentaCobroArchivo::create([
+                            'cuenta_cobro_id' => $cuentaCobro->id,
+                            'subido_por' => Auth::id(),
+                            'nombre_original' => $nombreOriginal,
+                            'nombre_archivo' => $nombreArchivo,
+                            'ruta' => $ruta,
+                            'tipo_archivo' => $extension,
+                            'mime_type' => $archivo->getMimeType(),
+                            'tamaño' => $archivo->getSize(),
+                            'tipo_documento' => $archivoData['tipo_documento'],
+                            'descripcion' => $archivoData['descripcion'] ?? null,
+                        ]);
+
+                        Log::info('Registro creado en cuenta_cobro_archivos', [
+                            'nombre_original' => $nombreOriginal,
+                            'nombre_archivo' => $nombreArchivo,
+                            'ruta' => $ruta
+                        ]);
+
+                    } catch (\Exception $e) {
+                        Log::error('Error al procesar archivo ' . $index, [
+                            'error' => $e->getMessage(),
+                            'archivo' => $nombreOriginal ?? 'desconocido',
+                            'cuenta_cobro_id' => $cuentaCobro->id
+                        ]);
+
+                        // Continuar con otros archivos pero registrar el error
+                        continue;
+                    }
+                }
+            } else {
+                Log::info('No hay archivos para procesar', ['cuenta_cobro_id' => $cuentaCobro->id]);
+            }
 
             DB::commit();
 
-            return redirect()->route('cuentas-cobro.show', $cuentaCobro->id)
+            Log::info('Cuenta de cobro creada exitosamente', [
+                'cuenta_cobro_id' => $cuentaCobro->id,
+                'creado_por' => $user->id,
+                'items_count' => count($validated['items']),
+                'archivos_count' => $request->has('archivos') ? count($request->archivos) : 0
+            ]);
+
+            // Para requests AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cuenta de cobro creada exitosamente',
+                    'redirect' => route('cuentas-cobro.show', $cuentaCobro->id)
+                ]);
+            }
+
+            return redirect()
+                ->route('cuentas-cobro.show', $cuentaCobro->id)
                 ->with('success', 'Cuenta de cobro creada exitosamente');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error al crear la cuenta de cobro: ' . $e->getMessage());
+            Log::error('Error al crear cuenta de cobro', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id
+            ]);
+
+            // Para requests AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear la cuenta de cobro: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return back()
+                ->withInput()
+                ->with('error', 'Error al crear la cuenta de cobro: ' . $e->getMessage());
         }
     }
 
     /**
-     * Mostrar detalle
+     * Método temporal para debug de archivos
+     */
+    public function debugArchivos(Request $request)
+    {
+        Log::info('Debug archivos recibidos', [
+            'todos_los_datos' => $request->all(),
+            'archivos_recibidos' => $request->has('archivos') ? count($request->archivos) : 0,
+            'files' => $request->file() ? array_keys($request->file()) : []
+        ]);
+
+        return response()->json([
+            'request_all' => $request->all(),
+            'files_count' => $request->has('archivos') ? count($request->archivos) : 0,
+            'files_structure' => $request->file()
+        ]);
+    }
+
+    /**
+     * Mostrar detalle de cuenta de cobro
      */
     public function show($id)
     {
@@ -226,12 +369,21 @@ class CuentaCobroController extends Controller
             'contrato.contratista',
             'contrato.supervisor',
             'items',
-            'documentos',
+            'archivos.subidoPor',
             'historial.usuario'
         ])->findOrFail($id);
 
-        if ($cuentaCobro->contrato->organizacion_id != $organizacionId) {
-            abort(403);
+        // Verificar acceso
+        $contratoOrgId = $cuentaCobro->contrato->organizacion_id;
+
+        if (!$user->tienePermiso('ver-todas-cuentas', $contratoOrgId)) {
+            if ($user->tienePermiso('ver-mis-cuentas', $contratoOrgId)) {
+                if ($cuentaCobro->contrato->contratista_id != $user->id) {
+                    abort(403, 'No tienes acceso a esta cuenta de cobro');
+                }
+            } else {
+                abort(403, 'No tienes acceso a esta cuenta de cobro');
+            }
         }
 
         return view('cuentas_cobro.show', compact('cuentaCobro'));
@@ -339,8 +491,8 @@ class CuentaCobroController extends Controller
 
             DB::commit();
 
-            return redirect()->route('cuentas-cobro.show', $cuentaCobro->id)
-                ->with('success', 'Cuenta de cobro actualizada exitosamente');
+            return redirect()->route('cuentas-cobro.show', $id)
+                ->with('success', 'Cuenta de cobro actualizada exitosamente.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -409,6 +561,27 @@ class CuentaCobroController extends Controller
             }
 
             // Si se aprueba por ordenador, preparar para pago (pero no cambiar aquí, ya que OP se crea separado)
+            // Si se paga, actualizar valor_pagado del contrato
+            if (in_array($nuevoEstado, ['pagada'])) {
+                $contrato->recalcularValorPagado();
+
+                Log::info('Cuenta pagada - Contrato actualizado', [
+                    'contrato_id' => $contrato->id,
+                    'cuenta_cobro_id' => $cuentaCobro->id,
+                    'nuevo_valor_pagado' => $contrato->valor_pagado,
+                ]);
+            }
+
+            // Si se revierte un pago
+            if (in_array($estadoAnterior, ['pagada']) && !in_array($nuevoEstado, ['pagada'])) {
+                $contrato->recalcularValorPagado();
+
+                Log::info('Pago revertido - Contrato actualizado', [
+                    'contrato_id' => $contrato->id,
+                    'cuenta_cobro_id' => $cuentaCobro->id,
+                    'nuevo_valor_pagado' => $contrato->valor_pagado
+                ]);
+            }
 
             DB::commit();
 
@@ -421,23 +594,118 @@ class CuentaCobroController extends Controller
     }
 
     /**
-     * Subir documento soporte
+     * Descargar archivo de cuenta de cobro
      */
-    public function subirDocumento(Request $request, $id)
+    public function descargarArchivo($cuentaCobroId, $archivoId)
     {
-        $validated = $request->validate([
-            'tipo_documento' => 'required|in:acta_recibido,informe,foto_evidencia,planilla,pila,formato_institucional,otro',
-            'archivo' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,zip',
-        ]);
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
 
-        $cuentaCobro = CuentaCobro::findOrFail($id);
+        // Buscar el archivo
+        $archivo = CuentaCobroArchivo::with('cuentaCobro.contrato')->findOrFail($archivoId);
+
+        // Verificar que el archivo pertenece a la cuenta de cobro
+        if ($archivo->cuenta_cobro_id != $cuentaCobroId) {
+            abort(404, 'Archivo no encontrado');
+        }
+
+        // Verificar permisos
+        $organizacionId = $archivo->cuentaCobro->contrato->organizacion_id;
+
+        if (!$user->tienePermiso('ver-todas-cuentas', $organizacionId)) {
+            if ($user->tienePermiso('ver-mis-cuentas', $organizacionId)) {
+                if ($archivo->cuentaCobro->contrato->contratista_id != $user->id) {
+                    abort(403, 'No tienes acceso a este archivo');
+                }
+            } else {
+                abort(403, 'No tienes acceso a este archivo');
+            }
+        }
 
         try {
-            $archivo = $request->file('archivo');
-            $nombreArchivo = time() . '_' . $archivo->getClientOriginalName();
-            $ruta = $archivo->storeAs('cuentas_cobro/' . $cuentaCobro->id, $nombreArchivo, 'public');
+            // Verificar que el archivo existe en el FTP
+            if (!Storage::disk('ftp')->exists($archivo->ruta)) {
+                abort(404, 'Archivo no encontrado en el servidor');
+            }
 
-            DocumentoSoporte::create([
+            // Obtener el archivo del FTP
+            $fileContent = Storage::disk('ftp')->get($archivo->ruta);
+
+            // Headers para la descarga
+            $headers = [
+                'Content-Type' => $archivo->mime_type,
+                'Content-Disposition' => 'attachment; filename="' . $archivo->nombre_original . '"',
+            ];
+
+            return response($fileContent, 200, $headers);
+
+        } catch (\Exception $e) {
+            Log::error('Error al descargar archivo', [
+                'archivo_id' => $archivo->id,
+                'error' => $e->getMessage(),
+                'ruta' => $archivo->ruta
+            ]);
+
+            abort(404, 'Error al descargar el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Subir documento adicional a cuenta de cobro existente
+     */
+    public function subirArchivo(Request $request, $cuentaCobroId)
+    {
+        // Buscar la cuenta de cobro
+        $cuentaCobro = CuentaCobro::findOrFail($cuentaCobroId);
+
+        $estadosPermitidos = ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion'];
+        if (!in_array($cuentaCobro->estado, $estadosPermitidos)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pueden agregar documentos en el estado actual de la cuenta de cobro'
+                ], 403);
+            }
+            return back()->with('error', 'No se pueden agregar documentos en el estado actual');
+        }
+
+        $validated = $request->validate([
+            'archivo' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+            'tipo_documento' => 'required|in:cuenta_cobro,acta_recibido,informe,foto_evidencia,planilla,soporte_pago,factura,otro',
+            'descripcion' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $archivo = $validated['archivo'];
+            $nombreOriginal = $archivo->getClientOriginalName();
+            $extension = $archivo->getClientOriginalExtension();
+
+            $numeroCuenta = $cuentaCobro->numero_cuenta_cobro;
+            $tipoDocumento = $validated['tipo_documento'];
+            $timestamp = time();
+            $random = uniqid();
+
+            $nombreArchivo = "{$numeroCuenta}_{$tipoDocumento}_{$timestamp}_{$random}.{$extension}";
+            $directorio = 'cuentas_cobro/' . $cuentaCobro->id;
+            $ruta = $directorio . '/' . $nombreArchivo;
+
+            Log::info('Subiendo archivo a FTP desde edición', [
+                'ruta' => $ruta,
+                'cuenta_cobro_id' => $cuentaCobro->id
+            ]);
+
+            if (!Storage::disk('ftp')->exists($directorio)) {
+                Storage::disk('ftp')->makeDirectory($directorio);
+            }
+
+            $subido = Storage::disk('ftp')->put($ruta, fopen($archivo->getRealPath(), 'r+'));
+
+            if (!$subido) {
+                throw new \Exception('No se pudo subir el archivo al FTP');
+            }
+
+            $nuevoArchivo = CuentaCobroArchivo::create([
                 'cuenta_cobro_id' => $cuentaCobro->id,
                 'tipo_documento' => $validated['tipo_documento'],
                 'nombre_archivo' => $nombreArchivo,
@@ -445,27 +713,76 @@ class CuentaCobroController extends Controller
                 'tamano_kb' => round($archivo->getSize() / 1024),
             ]);
 
-            return back()->with('success', 'Documento subido exitosamente');
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Archivo subido exitosamente'
+                ]);
+            }
+
+            return back()->with('success', 'Archivo subido exitosamente');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al subir el documento: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Error al subir archivo', [
+                'error' => $e->getMessage(),
+                'cuenta_cobro_id' => $cuentaCobro->id
+            ]);
+
+            return back()->with('error', 'Error al subir el archivo: ' . $e->getMessage());
         }
     }
 
     /**
-     * Eliminar documento soporte
+     * Eliminar archivo de cuenta de cobro
      */
-    public function eliminarDocumento($id, $documentoId)
+    public function eliminarArchivo($cuentaCobroId, $archivoId)
     {
-        $documento = DocumentoSoporte::where('cuenta_cobro_id', $id)
-            ->where('id', $documentoId)
-            ->firstOrFail();
+        /** @var \App\Models\Usuario $user */
+        $user = Auth::user();
 
+        $archivo = CuentaCobroArchivo::with('cuentaCobro.contrato')->findOrFail($archivoId);
+
+        if ($archivo->cuenta_cobro_id != $cuentaCobroId) {
+            abort(404, 'Archivo no encontrado');
+        }
+
+        $organizacionId = $archivo->cuentaCobro->contrato->organizacion_id;
+
+        $puedeEliminar = $user->tienePermiso('ver-todas-cuentas', $organizacionId) ||
+            $archivo->subido_por == $user->id;
+
+        if (!$puedeEliminar) {
+            abort(403, 'No tienes permiso para eliminar este archivo');
+        }
+
+        $estadosPermitidos = ['borrador', 'en_correccion_supervisor', 'en_correccion_contratacion'];
+        if (!in_array($archivo->cuentaCobro->estado, $estadosPermitidos)) {
+            return back()->with('error', 'Solo se pueden eliminar archivos de cuentas en estado editable');
+        }
+
+        DB::beginTransaction();
         try {
-            $documento->delete();
-            return back()->with('success', 'Documento eliminado exitosamente');
+            if (Storage::disk('ftp')->exists($archivo->ruta)) {
+                Storage::disk('ftp')->delete($archivo->ruta);
+            }
+
+            $archivo->delete();
+            DB::commit();
+
+            return back()->with('success', 'Archivo eliminado exitosamente');
+
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al eliminar el documento: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Error al eliminar archivo', [
+                'archivo_id' => $archivo->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Error al eliminar el archivo');
         }
     }
 }
+

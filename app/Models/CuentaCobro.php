@@ -45,7 +45,7 @@ class CuentaCobro extends Model
     public function contrato() { return $this->belongsTo(Contrato::class); }
     public function creador() { return $this->belongsTo(Usuario::class, 'created_by'); }
     public function items() { return $this->hasMany(ItemCuentaCobro::class, 'cuenta_cobro_id'); }
-    public function documentos() { return $this->hasMany(DocumentoSoporte::class, 'cuenta_cobro_id'); }
+    public function archivos() { return $this->hasMany(CuentaCobroArchivo::class, 'cuenta_cobro_id'); }
     public function historial() { return $this->hasMany(HistorialEstado::class, 'cuenta_cobro_id')->orderByDesc('created_at'); }
 
     // === ESTADOS Y COLORES ===

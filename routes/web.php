@@ -83,7 +83,7 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{organizacion}/actualizar-admin', [OrganizacionController::class, 'actualizarAdmin'])->name('organizaciones.actualizar-admin');
             Route::put('/{organizacion}/cambiar-admin', [OrganizacionController::class, 'cambiarAdmin'])->name('organizaciones.cambiar-admin');
         });
-    
+
     Route::post('/vincular-codigo', [OrganizacionController::class, 'vincularCodigo'])->name('vincular-codigo');
 
    // ============================================
@@ -158,7 +158,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [ContratoController::class, 'index'])
                 ->middleware('verificar.acceso.contrato')
                 ->name('contratos.index');
-            
+
             Route::get('/crear', [ContratoController::class, 'create'])
                 ->middleware('verificar.permiso:crear-contrato')
                 ->name('contratos.create');
@@ -212,12 +212,12 @@ Route::middleware(['auth'])->group(function () {
     // CUENTAS DE COBRO - CON FLUJO COMPLETO
     // ============================================
     Route::middleware(['verificar.acceso.organizacion'])->prefix('cuentas-cobro')->group(function () {
-        
+
         // INDEX - Ver cuentas (segmentado por permiso)
         Route::get('/', [CuentaCobroController::class, 'index'])
             ->middleware('verificar.acceso.cuenta.cobro')
             ->name('cuentas-cobro.index');
-        
+
         // CREAR - Solo contratistas
         Route::get('/crear', [CuentaCobroController::class, 'create'])
             ->middleware('verificar.permiso:crear-cuenta-cobro')
@@ -226,11 +226,32 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [CuentaCobroController::class, 'store'])
             ->middleware('verificar.permiso:crear-cuenta-cobro')
             ->name('cuentas-cobro.store');
-        
+
+        // RUTAS DE ARCHIVOS - CORREGIDAS
+        Route::post('/{cuentaCobro}/archivos/subir', [CuentaCobroController::class, 'subirArchivo'])
+            ->name('cuentas-cobro.archivos.subir');
+
+        Route::get('/{cuentaCobro}/archivos/{archivo}/descargar', [CuentaCobroController::class, 'descargarArchivo'])
+            ->name('cuentas-cobro.archivos.descargar');
+
+        Route::delete('/{cuentaCobro}/archivos/{archivo}/eliminar', [CuentaCobroController::class, 'eliminarArchivo'])
+            ->name('cuentas-cobro.archivos.eliminar');
+
+        // RUTA DEBUG PARA VER RUTAS (TEMPORAL)
+        Route::get('/debug-routes', function () {
+            $routes = Route::getRoutes();
+
+            foreach ($routes as $route) {
+                if (str_contains($route->getName(), 'cuentas-cobro')) {
+                    echo $route->getName() . ' - ' . $route->uri() . ' - ' . implode(',', $route->methods()) . '<br>';
+                }
+            }
+        })->name('cuentas-cobro.debug-routes');
+
         // VER DETALLE - Validación en controlador
         Route::get('/{id}', [CuentaCobroController::class, 'show'])
             ->name('cuentas-cobro.show');
-        
+
         // EDITAR - Solo en borrador
         Route::get('/{id}/editar', [CuentaCobroController::class, 'edit'])
             ->middleware('verificar.permiso:editar-cuenta-cobro')
@@ -239,37 +260,50 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [CuentaCobroController::class, 'update'])
             ->middleware('verificar.permiso:editar-cuenta-cobro')
             ->name('cuentas-cobro.update');
-        
+
         // ELIMINAR - Solo en borrador
         Route::delete('/{id}', [CuentaCobroController::class, 'destroy'])
             ->middleware('verificar.permiso:editar-cuenta-cobro')
             ->name('cuentas-cobro.destroy');
-        
+
         // CAMBIAR ESTADO - El permiso se valida dentro del controlador según el estado
         Route::post('/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
             ->name('cuentas-cobro.cambiar-estado');
-        
-        // DOCUMENTOS
-        Route::post('/{id}/documentos', [CuentaCobroController::class, 'subirDocumento'])
-            ->middleware('verificar.permiso:cargar-documentos')
-            ->name('cuentas-cobro.subir-documento');
-        
-        Route::delete('/{id}/documentos/{documentoId}', [CuentaCobroController::class, 'eliminarDocumento'])
-            ->middleware('verificar.permiso:cargar-documentos')
-            ->name('cuentas-cobro.eliminar-documento');
+
+        // VER DETALLE - Validación en controlador
+        Route::get('/{id}', [CuentaCobroController::class, 'show'])
+            ->name('cuentas-cobro.show');
+
+        // EDITAR - Solo en borrador
+        Route::get('/{id}/editar', [CuentaCobroController::class, 'edit'])
+            ->middleware('verificar.permiso:editar-cuenta-cobro')
+            ->name('cuentas-cobro.edit');
+
+        Route::put('/{id}', [CuentaCobroController::class, 'update'])
+            ->middleware('verificar.permiso:editar-cuenta-cobro')
+            ->name('cuentas-cobro.update');
+
+        // ELIMINAR - Solo en borrador
+        Route::delete('/{id}', [CuentaCobroController::class, 'destroy'])
+            ->middleware('verificar.permiso:editar-cuenta-cobro')
+            ->name('cuentas-cobro.destroy');
+
+        // CAMBIAR ESTADO - El permiso se valida dentro del controlador según el estado
+        Route::post('/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
+            ->name('cuentas-cobro.cambiar-estado');
     });
 
     // ============================================
     // CONFIGURACIÓN
     // ============================================
     Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
-    
+
     Route::middleware([VerificarAdminGlobal::class])->group(function () {
         Route::get('/configuracion/global', [ConfiguracionController::class, 'global'])->name('configuracion.global');
         Route::post('/configuracion/global', [ConfiguracionController::class, 'actualizarGlobal'])->name('configuracion.actualizar-global');
         Route::get('/configuracion/exportar-logs', [ConfiguracionController::class, 'exportarLogs'])->name('configuracion.exportar-logs');
     });
-    
+
     Route::middleware([VerificarAccesoOrganizacion::class])->group(function () {
         Route::get('/configuracion/organizacion', [ConfiguracionController::class, 'organizacion'])->name('configuracion.organizacion');
         Route::post('/configuracion/organizacion', [ConfiguracionController::class, 'actualizarOrganizacion'])->name('configuracion.actualizar-organizacion');

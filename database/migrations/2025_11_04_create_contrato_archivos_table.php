@@ -4,10 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class () extends Migration {
-    /**
-     * Run the migrations.
-     */
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('contrato_archivos', function (Blueprint $table) {
@@ -19,15 +17,18 @@ return new class () extends Migration {
             $table->string('ruta');
             $table->string('tipo_archivo', 10);
             $table->string('mime_type', 100);
-            $table->bigInteger('tamaño'); // Nota: sin tilde en el código
+            $table->bigInteger('tamaño');
             $table->enum('tipo_documento', [
                 'contrato_firmado',
-                'adicion',
-                'suspension',
-                'acta_inicio',
+                'acta_inicio', 
+                'cronograma',           // ← Agregar este
+                'presupuesto',          // ← Agregar este
+                'estudio_previo',
+                'certificacion_presupuestal',
+                'cdp',
                 'acta_liquidacion',
                 'otro'
-            ])->default('contrato_firmado');
+            ])->default('otro');
             $table->text('descripcion')->nullable();
             $table->timestamps();
 
@@ -36,9 +37,6 @@ return new class () extends Migration {
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('contrato_archivos');
