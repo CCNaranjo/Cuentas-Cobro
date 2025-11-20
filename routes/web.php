@@ -237,39 +237,6 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{cuentaCobro}/archivos/{archivo}/eliminar', [CuentaCobroController::class, 'eliminarArchivo'])
             ->name('cuentas-cobro.archivos.eliminar');
 
-        // RUTA DEBUG PARA VER RUTAS (TEMPORAL)
-        Route::get('/debug-routes', function () {
-            $routes = Route::getRoutes();
-
-            foreach ($routes as $route) {
-                if (str_contains($route->getName(), 'cuentas-cobro')) {
-                    echo $route->getName() . ' - ' . $route->uri() . ' - ' . implode(',', $route->methods()) . '<br>';
-                }
-            }
-        })->name('cuentas-cobro.debug-routes');
-
-        // VER DETALLE - Validación en controlador
-        Route::get('/{id}', [CuentaCobroController::class, 'show'])
-            ->name('cuentas-cobro.show');
-
-        // EDITAR - Solo en borrador
-        Route::get('/{id}/editar', [CuentaCobroController::class, 'edit'])
-            ->middleware('verificar.permiso:editar-cuenta-cobro')
-            ->name('cuentas-cobro.edit');
-
-        Route::put('/{id}', [CuentaCobroController::class, 'update'])
-            ->middleware('verificar.permiso:editar-cuenta-cobro')
-            ->name('cuentas-cobro.update');
-
-        // ELIMINAR - Solo en borrador
-        Route::delete('/{id}', [CuentaCobroController::class, 'destroy'])
-            ->middleware('verificar.permiso:editar-cuenta-cobro')
-            ->name('cuentas-cobro.destroy');
-
-        // CAMBIAR ESTADO - El permiso se valida dentro del controlador según el estado
-        Route::post('/{id}/cambiar-estado', [CuentaCobroController::class, 'cambiarEstado'])
-            ->name('cuentas-cobro.cambiar-estado');
-
         // VER DETALLE - Validación en controlador
         Route::get('/{id}', [CuentaCobroController::class, 'show'])
             ->name('cuentas-cobro.show');

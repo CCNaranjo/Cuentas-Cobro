@@ -15,81 +15,95 @@
                 Menú Principal
             </p>
             
-            <!-- Dashboard -->
-            <a href="{{ route('dashboard') }}" 
-               class="sidebar-link group {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('dashboard') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-tachometer-alt text-lg"></i>
-                <span>Dashboard</span>
-            </a>
+            <ul class="space-y-1">
+                <!-- Dashboard -->
+                <li>
+                    <a href="{{ route('dashboard') }}" 
+                       class="sidebar-link group {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('dashboard') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-tachometer-alt text-lg"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
 
-            <!-- Organizaciones (Solo Admin Global) -->
-            @if(auth()->user()->esAdminGlobal())
-            <a href="{{ route('organizaciones.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('organizaciones.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('organizaciones.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-building text-lg"></i>
-                <span>Organizaciones</span>
-            </a>
-            @endif
-
-            <!-- Usuarios -->
-            @if(auth()->user()->tienePermiso('ver-usuarios', session('organizacion_actual')) || auth()->user()->esAdminGlobal())
-            <a href="{{ route('usuarios.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('usuarios.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-users text-lg"></i>
-                <span>Usuarios</span>
-                @if(session('organizacion_actual'))
-                    @php
-                        $pendientes = \App\Models\VinculacionPendiente::where('organizacion_id', session('organizacion_actual'))
-                            ->where('estado', 'pendiente')
-                            ->count();
-                    @endphp
-                    @if($pendientes > 0)
-                        <span class="ml-auto bg-warning text-white px-2 py-0.5 rounded-full text-xs font-bold animate-pulse">
-                            {{ $pendientes }}
-                        </span>
-                    @endif
+                <!-- Organizaciones (Solo Admin Global) -->
+                @if(auth()->user()->esAdminGlobal())
+                <li>
+                    <a href="{{ route('organizaciones.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('organizaciones.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('organizaciones.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Organizaciones</span>
+                    </a>
+                </li>
                 @endif
-            </a>
-            @endif
 
-            <!-- Roles y permisos (Solo Admin Global y organizacion) -->
-            @if(auth()->user()->esAdminGlobal() ||
-                auth()->user()->tienePermiso('ver-roles', session('organizacion_actual')))
-            <a href="{{ route('roles.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('roles.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-user-shield text-lg"></i>
-                <span>Roles</span>
-            </a>
-            @endif
-            
-            <!-- Contratos -->
-            @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')) || 
-                auth()->user()->tienePermiso('ver-mis-contratos', session('organizacion_actual')))
-            <a href="{{ route('contratos.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('contratos.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('contratos.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-file-contract text-lg"></i>
-                <span>Contratos</span>
-            </a>
-            @endif
-
-            <!-- ✅ Cuentas de Cobro - AHORA ACTIVO -->
-            @if(auth()->user()->tienePermiso('ver-todas-cuentas', session('organizacion_actual')) || 
-                auth()->user()->tienePermiso('ver-mis-cuentas', session('organizacion_actual')))
-            <a href="{{ route('cuentas-cobro.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('cuentas-cobro.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('cuentas-cobro.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-file-invoice-dollar text-lg"></i>
-                <span>Cuentas de Cobro</span>
-                @if(request()->routeIs('cuentas-cobro.*'))
-                    <span class="ml-auto text-xs bg-accent text-white px-2 py-0.5 rounded">Activo</span>
+                <!-- Usuarios -->
+                @if(auth()->user()->tienePermiso('ver-usuarios', session('organizacion_actual')) || auth()->user()->esAdminGlobal())
+                <li>
+                    <a href="{{ route('usuarios.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('usuarios.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('usuarios.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-users text-lg"></i>
+                        <span>Usuarios</span>
+                        @if(session('organizacion_actual'))
+                            @php
+                                $pendientes = \App\Models\VinculacionPendiente::where('organizacion_id', session('organizacion_actual'))
+                                    ->where('estado', 'pendiente')
+                                    ->count();
+                            @endphp
+                            @if($pendientes > 0)
+                                <span class="ml-auto bg-warning text-white px-2 py-0.5 rounded-full text-xs font-bold animate-pulse">
+                                    {{ $pendientes }}
+                                </span>
+                            @endif
+                        @endif
+                    </a>
+                </li>
                 @endif
-            </a>
-            @endif
+
+                <!-- Roles y permisos (Solo Admin Global y organizacion) -->
+                @if(auth()->user()->esAdminGlobal() ||
+                    auth()->user()->tienePermiso('ver-roles', session('organizacion_actual')))
+                <li>
+                    <a href="{{ route('roles.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('roles.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-user-shield text-lg"></i>
+                        <span>Roles</span>
+                    </a>
+                </li>
+                @endif
+                
+                <!-- Contratos -->
+                @if(auth()->user()->tienePermiso('ver-todos-contratos', session('organizacion_actual')) || 
+                    auth()->user()->tienePermiso('ver-mis-contratos', session('organizacion_actual')))
+                <li>
+                    <a href="{{ route('contratos.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('contratos.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('contratos.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-file-contract text-lg"></i>
+                        <span>Contratos</span>
+                    </a>
+                </li>
+                @endif
+
+                <!-- Cuentas de Cobro -->
+                @if(auth()->user()->tienePermiso('ver-todas-cuentas', session('organizacion_actual')) || 
+                    auth()->user()->tienePermiso('ver-mis-cuentas', session('organizacion_actual')))
+                <li>
+                    <a href="{{ route('cuentas-cobro.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('cuentas-cobro.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('cuentas-cobro.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-file-invoice-dollar text-lg"></i>
+                        <span>Cuentas de Cobro</span>
+                        @if(request()->routeIs('cuentas-cobro.*'))
+                            <span class="ml-auto text-xs bg-accent text-white px-2 py-0.5 rounded">Activo</span>
+                        @endif
+                    </a>
+                </li>
+                @endif
+            </ul>
         </div>
 
         <!-- Análisis -->
@@ -100,19 +114,25 @@
                 Análisis
             </p>
             
-            <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
-                <i class="fas fa-chart-line text-lg"></i>
-                <span>Informes</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
-            </a>
-            
-            <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
-                <i class="fas fa-chart-pie text-lg"></i>
-                <span>Estadísticas</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
-            </a>
+            <ul class="space-y-1">
+                <li>
+                    <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+                        <i class="fas fa-chart-line text-lg"></i>
+                        <span>Informes</span>
+                        <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+                        <i class="fas fa-chart-pie text-lg"></i>
+                        <span>Estadísticas</span>
+                        <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
+                    </a>
+                </li>
+            </ul>
         </div>
         @endif
 
@@ -123,11 +143,15 @@
                 Tesorería
             </p>
             
-            <a href="{{ route('pagos.op.index') }}" class="sidebar-link group {{ request()->routeIs('cuentas-cobro.*') ? 'active' : '' }}" title="Ordenes de Pago">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('cuentas-cobro.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-money-check-alt text-lg"></i>
-                <span>Pagos</span>
-            </a>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{{ route('pagos.op.index') }}" class="sidebar-link group {{ request()->routeIs('pagos.op.*') ? 'active' : '' }}" title="Órdenes de Pago">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('pagos.op.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-money-check-alt text-lg"></i>
+                        <span>Órdenes de Pago</span>
+                    </a>
+                </li>
+            </ul>
         </div>
         @endif
 
@@ -137,19 +161,25 @@
                 Sistema
             </p>
             
-            <a href="{{ route('configuracion.index') }}" 
-               class="sidebar-link group {{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('configuracion.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
-                <i class="fas fa-cog text-lg"></i>
-                <span>Configuracion</span>
-            </a>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{{ route('configuracion.index') }}" 
+                       class="sidebar-link group {{ request()->routeIs('configuracion.*') ? 'active' : '' }}">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all {{ request()->routeIs('configuracion.*') ? '' : 'opacity-0 group-hover:opacity-100' }}"></div>
+                        <i class="fas fa-cog text-lg"></i>
+                        <span>Configuración</span>
+                    </a>
+                </li>
 
-            <a href="configuracion.index" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
-                <i class="fas fa-question-circle text-lg"></i>
-                <span>Ayuda</span>
-                <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
-            </a>
+                <li>
+                    <a href="#" class="sidebar-link group opacity-50 cursor-not-allowed" title="Próximamente">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-r-full transition-all opacity-0"></div>
+                        <i class="fas fa-question-circle text-lg"></i>
+                        <span>Ayuda</span>
+                        <span class="ml-auto text-xs bg-accent/20 text-white px-1.5 py-0.5 rounded">Próximo</span>
+                    </a>
+                </li>
+            </ul>
         </div>
     </nav>
 
@@ -176,7 +206,7 @@
 <style>
 /* Estilos para los enlaces del sidebar */
 .sidebar-link {
-    @apply relative flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 mb-1;
+    @apply relative flex items-center space-x-3 px-4 py-3 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200;
 }
 
 .sidebar-link.active {
@@ -191,6 +221,11 @@
     @apply w-5 flex-shrink-0;
 }
 
+/* Espaciado entre elementos de lista */
+.space-y-1 > li {
+    @apply mb-1;
+}
+
 /* Animación para badges de notificación */
 @keyframes pulse {
     0%, 100% {
@@ -203,5 +238,14 @@
 
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Mejoras de accesibilidad para lista */
+ul {
+    @apply list-none;
+}
+
+li {
+    @apply m-0 p-0;
 }
 </style>

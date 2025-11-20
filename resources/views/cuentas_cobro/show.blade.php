@@ -214,7 +214,15 @@
                                         Anular
                                     </button>
                                 @endif
+
+                                <button onclick="window.print()" 
+                                        class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors flex items-center">
+                                    <i class="fas fa-print mr-2"></i>
+                                    Imprimir
+                                </button>
                             </div>
+
+                            
                         </div>
 
                         <!-- Grid Principal -->

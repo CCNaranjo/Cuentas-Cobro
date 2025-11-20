@@ -337,7 +337,9 @@
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition font-mono text-sm"
                                     required></textarea>
                             <p class="text-xs text-gray-500 mt-2">
-                                Variables disponibles: {{nombre}}, {{email}}, {{organizacion}}, {{enlace}}
+                                @verbatim
+                                    Variables disponibles: {{nombre}}, {{email}}, {{organizacion}}, {{enlace}}
+                                @endverbatim
                             </p>
                         </div>
                         
